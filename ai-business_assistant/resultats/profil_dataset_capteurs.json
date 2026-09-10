@@ -1,0 +1,147 @@
+{
+  "fichier": "data/capteurs_batiment.csv",
+  "nb_lignes": 11070,
+  "nb_colonnes": 9,
+  "valeurs_manquantes": {
+    "temperature_interieure_c": {
+      "nb": 342,
+      "taux_pct": 3.09
+    },
+    "humidite_pct": {
+      "nb": 681,
+      "taux_pct": 6.15
+    },
+    "occupation_personnes": {
+      "nb": 527,
+      "taux_pct": 4.76
+    },
+    "type_jour": {
+      "nb": 98,
+      "taux_pct": 0.89
+    },
+    "consommation_kwh": {
+      "nb": 188,
+      "taux_pct": 1.7
+    }
+  },
+  "doublons": {
+    "lignes_strictement_identiques": 183,
+    "doublons_cle_metier_horodatage_zone": 270,
+    "id_releve_dupliques": 270,
+    "commentaire": "L'écart entre doublons stricts et doublons de clé métier correspond aux quasi-doublons : même horodatage et même zone, mais mesures légèrement différentes. Ils ne sont pas détectables par une simple déduplication exacte."
+  },
+  "statistiques_numeriques": {
+    "temperature_interieure_c": {
+      "nb_valeurs": 10728,
+      "min": -999.0,
+      "max": 24.01,
+      "moyenne": 15.108,
+      "ecart_type": 77.325,
+      "q1": 20.45,
+      "mediane": 21.0,
+      "q3": 21.55,
+      "outliers_iqr": {
+        "nb": 119,
+        "taux_pct": 1.11,
+        "borne_basse": 18.8,
+        "borne_haute": 23.2
+      },
+      "sentinelle_-999": 62
+    },
+    "temperature_exterieure_c": {
+      "nb_valeurs": 11070,
+      "min": -5.38,
+      "max": 13.9,
+      "moyenne": 3.757,
+      "ecart_type": 3.575,
+      "q1": 0.98,
+      "mediane": 3.7,
+      "q3": 6.32,
+      "outliers_iqr": {
+        "nb": 0,
+        "taux_pct": 0.0,
+        "borne_basse": -7.03,
+        "borne_haute": 14.33
+      }
+    },
+    "humidite_pct": {
+      "nb_valeurs": 10389,
+      "min": 23.3,
+      "max": 317.4,
+      "moyenne": 45.58,
+      "ecart_type": 12.815,
+      "q1": 40.8,
+      "mediane": 44.9,
+      "q3": 49.0,
+      "outliers_iqr": {
+        "nb": 114,
+        "taux_pct": 1.1,
+        "borne_basse": 28.5,
+        "borne_haute": 61.3
+      },
+      "hors_plage_0_100": 35
+    },
+    "occupation_personnes": {
+      "nb_valeurs": 10543,
+      "min": 0.0,
+      "max": 22.0,
+      "moyenne": 4.286,
+      "ecart_type": 4.753,
+      "q1": 0.0,
+      "mediane": 3.0,
+      "q3": 8.0,
+      "outliers_iqr": {
+        "nb": 6,
+        "taux_pct": 0.06,
+        "borne_basse": -12.0,
+        "borne_haute": 20.0
+      }
+    },
+    "consommation_kwh": {
+      "nb_valeurs": 10882,
+      "min": -39.47,
+      "max": 898.523,
+      "moyenne": 27.27,
+      "ecart_type": 71.733,
+      "q1": 10.291,
+      "mediane": 13.058,
+      "q3": 24.865,
+      "outliers_iqr": {
+        "nb": 1113,
+        "taux_pct": 10.23,
+        "borne_basse": -11.57,
+        "borne_haute": 46.725
+      },
+      "valeurs_negatives": 46
+    }
+  },
+  "variables_categorielles": {
+    "zone": {
+      "cardinalite_brute": 11,
+      "cardinalite_apres_normalisation": 5,
+      "modalites_brutes": {
+        "Salle_Serveur": 1160,
+        "bureau sud": 1151,
+        "atelier": 1148,
+        "accueil ": 1135,
+        "Accueil": 1075,
+        "Atelier": 1073,
+        "Bureau_Sud": 1070,
+        "Salle Serveur": 1042,
+        "BUREAU NORD": 759,
+        "Bureau_Nord": 743,
+        "bureau_nord": 714
+      }
+    },
+    "type_jour": {
+      "cardinalite_brute": 4,
+      "cardinalite_apres_normalisation": 4,
+      "modalites_brutes": {
+        "ouvré": 7670,
+        "weekend": 3181,
+        "férié": 121,
+        "": 98
+      }
+    }
+  }
+}
