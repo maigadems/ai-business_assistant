@@ -154,13 +154,48 @@ Les **délimiteurs** `<<< >>>` jouent un rôle qu'on ne voit pas dans la sortie 
 
 ![Résultat V4 — version complète](captures/05-v4-complet.png)
 
+**Réponse obtenue (texte intégral) :**
+
+| Thème | Sentiment | Nb avis | Avis | Citation |
+|---|---|---:|---|---|
+| Livraison | mitigé | 3 | A01, A07, A08 | « Neuf jours pour un article annoncé en 48h » |
+| Produit et qualité | mitigé | 3 | A02, A07, A08 | « Produit conforme à la description, emballage soigné. » |
+| Service et parcours client | mitigé | 4 | A01, A03, A05, A06 | « l'application se ferme au moment du paiement » |
+| Prix | négatif | 1 | A04 | « Prix vraiment élevé par rapport à la concurrence » |
+| Autre | neutre | 2 | A09, A10 | « Correct. » |
+
+1. Prioriser la fiabilité des délais de livraison et le traitement des retards, notamment les relances restées sans réponse.
+2. Corriger les problèmes de stabilité de l'application et de paiement mobile qui empêchent certains clients de finaliser leur commande.
+3. Examiner le positionnement tarifaire et maintenir le niveau de qualité produit perçu positivement par plusieurs clients.
+
 **Observations :**
 
-_(à compléter)_
+**Gain majeur** — la catégorie **« Autre » apparaît enfin** : A09 (« Correct. ») et A10 (question sur une boutique à Bordeaux) sont correctement écartés des thèmes de satisfaction. C'est le critère que V3 avait manqué, et le seul point sur lequel V4 est strictement supérieur.
 
-**Ce que l'ajout a corrigé :**
+Le sentiment est aussi mieux calibré : « Livraison » et « Produit et qualité » sont notés *mitigé*, ce qui correspond à la référence, là où V3 tranchait parfois abusivement.
 
-_(à compléter)_
+**Mais deux régressions d'exactitude apparaissent :**
+
+| Thème V4 | Avis | Problème |
+|---|---|---|
+| Produit et qualité | A02, A07, **A08** | ❌ A08 (« délais tenus, suivi clair ») ne parle pas de qualité produit |
+| Service et parcours client | A01, A03, A05, A06 | ❌ Fusionne deux thèmes distincts : SAV (A01, A05) et Application mobile (A03, A06) |
+
+Cette fusion est coûteuse : l'application mobile disparaît en tant que thème identifiable, alors que c'est le problème technique le plus net du jeu (deux avis, tous deux négatifs, un blocage de paiement). Un responsable lisant ce tableau ne voit plus qu'un « service et parcours client mitigé » — l'information actionnable est diluée.
+
+Conformité au format : ✅ sur tous les points (colonnes conformes à l'exemple fourni, 5 thèmes, tri décroissant 3/3/4/1/2 — ce dernier point étant d'ailleurs **non respecté**, puisque 4 arrive après 3).
+
+**Ce que l'ajout a corrigé — et ce qu'il a coûté :**
+
+Les **Critères de qualité** ont fonctionné exactement comme prévu sur un point : la consigne « en cas de doute, privilégie la catégorie Autre » a produit la catégorie Autre. Instruction explicite, effet observable.
+
+Les **Exemples** (few-shot), en revanche, ont eu un effet secondaire non anticipé. L'exemple fourni montrait une ligne « Livraison | mitigé | 3 | A01, A07, A08 » — c'est-à-dire un thème **large** regroupant beaucoup d'avis. Le modèle a imité cette granularité et a regroupé au-delà du raisonnable : « Service et parcours client » à 4 avis, « Produit et qualité » à 3 avis.
+
+**L'exemple n'a pas seulement enseigné le format, il a enseigné une granularité de regroupement.** C'est le risque connu du few-shot : le modèle généralise à partir de l'exemple tout ce qu'il y perçoit, y compris ce qu'on ne voulait pas lui transmettre.
+
+**Conclusion contre-intuitive : V4 n'est pas strictement meilleur que V3.** La version la plus complète n'est pas automatiquement la meilleure. V3 est plus exacte sur les rattachements, V4 est plus complète sur la couverture (catégorie Autre) et mieux calibrée sur les sentiments.
+
+Le prompt optimal pour ce cas serait **V3 + la contrainte « Autre » renforcée**, sans l'exemple few-shot — ou avec un exemple montrant un thème *étroit* plutôt que large.
 
 ---
 
