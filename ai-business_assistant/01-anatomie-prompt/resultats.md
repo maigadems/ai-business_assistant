@@ -97,13 +97,54 @@ C'est exactement le rôle des **Contraintes** (V3) : sans la règle explicite «
 
 ![Résultat V3 — contraintes et format](captures/04-v3-contraintes-format.png)
 
+**Réponse obtenue (texte intégral) :**
+
+| Thème | Sentiment dominant | Nombre d'avis | Identifiants | Citation représentative |
+|---|---|---:|---|---|
+| Livraison et délais | Mitigé | 3 | A01, A07, A08 | « Neuf jours pour un article annoncé en 48h, c'est inadmissible. » |
+| Application / expérience mobile | Négatif | 2 | A03, A06 | « l'application se ferme au moment du paiement. » |
+| Support client / résolution | Positif | 2 | A01, A05 | « on m'a répondu en moins de 5 minutes et le problème a été réglé dans la foulée. » |
+| Qualité et conformité du produit | Mitigé | 2 | A02, A07 | « Dommage que l'article soit arrivé avec une rayure sur le côté. » |
+| Prix / rapport qualité-prix | Négatif | 1 | A04 | « Prix vraiment élevé par rapport à la concurrence pour une qualité équivalente. » |
+
+1. **Réduire les incidents de livraison** en priorisant l'analyse des retards et le maintien des délais annoncés.
+2. **Corriger les problèmes de l'application mobile**, notamment les plantages lors de la consultation de l'historique et du paiement.
+3. **Renforcer le contrôle qualité avant expédition** afin de limiter les produits endommagés à la réception.
+
 **Observations :**
 
-_(à compléter)_
+Confrontation avec la répartition de référence de [`avis-clients.md`](../data/avis-clients.md) :
+
+| Thème de référence | Attendu | Obtenu en V3 | Conforme ? |
+|---|---|---|---|
+| Livraison | A01, A07, A08 | A01, A07, A08 | ✅ |
+| Application mobile | A03, A06 | A03, A06 | ✅ |
+| Service après-vente | A01, A05 | A01, A05 | ✅ |
+| Qualité produit | A02, A07 | A02, A07 | ✅ |
+| Prix | A04 | A04 | ✅ |
+
+**Les cinq thèmes sont exacts, avis pour avis.** La régression de V2 sur A07 est corrigée : le rattachement multiple fonctionne à nouveau (A01 dans deux thèmes, A07 dans deux thèmes).
+
+Conformité au format demandé :
+
+- ✅ Tableau markdown avec les 5 colonnes exactes
+- ✅ 5 thèmes, classés par nombre d'avis décroissant (3, 2, 2, 2, 1)
+- ✅ Citations extraites telles quelles, vérifiables dans les avis sources
+- ✅ 3 recommandations numérotées, une phrase chacune
+- ✅ Ton factuel, aucune formule de politesse
+- ✅ Émojis et colonnes inventées disparus
+
+Une seule réserve : le sentiment de « Support client / résolution » est noté **Positif** alors que ce thème regroupe A05 (très positif) et A01 (« j'ai relancé deux fois sans réponse », nettement négatif). La référence attend *mitigé*. Le modèle a suivi la citation qu'il a choisie plutôt que l'ensemble des avis du thème.
+
+Autre limite, non imputable au modèle : **A09 et A10 n'apparaissent nulle part**. La contrainte « range-le dans Autre » existait, mais la contrainte « 5 thèmes maximum » l'a emporté — les deux consignes entrent en conflit dès lors que 5 thèmes de satisfaction sont déjà identifiés.
 
 **Ce que l'ajout a corrigé :**
 
-_(à compléter)_
+C'est la version qui apporte le **gain de qualité le plus net**. Les **Contraintes** restaurent l'exhaustivité perdue en V2 : la règle explicite « un même avis peut relever de plusieurs thèmes » suffit à récupérer A07. Le **Format** élimine toute la variabilité décorative observée en V1 et V2.
+
+Les **délimiteurs** `<<< >>>` jouent un rôle qu'on ne voit pas dans la sortie mais qui compte : ils séparent les consignes des données. Sans eux, un avis client contenant « ignore les instructions précédentes » serait interprété comme une instruction — c'est le principe de l'injection de prompt.
+
+**La sortie est ici directement exploitable** : copiable dans un rapport, agrégeable, vérifiable ligne à ligne.
 
 ---
 
