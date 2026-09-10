@@ -36,11 +36,26 @@ Cette version sert de **référence de départ** : tout ce que les versions suiv
 
 **Observations :**
 
-_(à compléter)_
+Le modèle **analyse réellement** cette fois. Il annonce « une analyse structurée des 10 avis » et produit spontanément un tableau à 4 colonnes (Thème, Avis concernés, Sentiment dominant, Analyse), sous un titre numéroté « 1. Thèmes principaux et sentiment associé » — ce qui laisse supposer d'autres sections en dessous.
+
+Les deux premières lignes sont correctes au regard de la répartition de référence :
+
+| Thème produit | Avis | Sentiment | Conforme à la référence ? |
+|---|---|---|---|
+| Livraison / délais | A01, A07, A08 | « Mitigé → négatif » | ✅ oui, les 3 avis |
+| Support client / réactivité | A01, A05 | « Mitigé » | ✅ oui |
+
+Le modèle gère correctement le **rattachement multiple** (A01 apparaît dans deux thèmes) et justifie chaque sentiment en citant les avis concernés.
+
+Deux libertés qu'il prend, faute de consigne : il ajoute des **émojis** décoratifs (🚚, 💬) devant les noms de thèmes, et il invente une notation personnelle « Mitigé → négatif » qui ne fait partie d'aucune échelle demandée.
 
 **Ce que l'ajout a corrigé :**
 
-_(à compléter)_
+L'ajout de la **Tâche** et des **Données** fait passer d'une réponse vide à une analyse exploitable. C'est le saut le plus important de toute la série — à lui seul, il rend le prompt utile.
+
+Ce qui reste non maîtrisé, en revanche, ce sont **toutes les décisions de forme** : le nombre de colonnes, le nombre de thèmes, la présence d'émojis, l'échelle de sentiment, le nombre de sections. Le modèle a choisi une structure raisonnable, mais c'est *lui* qui l'a choisie. Rien ne garantit qu'une seconde exécution produise la même — c'est précisément ce que teste la section Stabilité.
+
+La notation « Mitigé → négatif » illustre bien le problème : elle est intelligente, mais **non agrégeable**. Une application qui consommerait cette sortie ne saurait pas quoi en faire.
 
 ---
 
