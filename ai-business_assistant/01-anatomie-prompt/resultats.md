@@ -1,6 +1,6 @@
 # Partie 1 — Résultats obtenus et analyse
 
-**LLM utilisé :** _(à renseigner : nom du modèle)_
+**LLM utilisé :** ChatGPT (OpenAI)
 **Date d'exécution :** 12 septembre 2025
 **Protocole :** une conversation neuve par version, avis de [`data/avis-clients.md`](../data/avis-clients.md) collés à la place de `{avis}`.
 
@@ -67,11 +67,27 @@ La notation « Mitigé → négatif » illustre bien le problème : elle est int
 
 **Observations :**
 
-_(à compléter)_
+Le changement est visible dès la première phrase : « Voici une analyse orientée **priorisation des actions du service client** ». Le modèle a compris qu'il ne décrit pas, il **prépare une décision**.
 
-**Ce que l'ajout a corrigé :**
+Conséquence directe : il ajoute de lui-même une colonne **« Intensité »** (Forte / …) qui n'existait pas en V1. Cette colonne n'a de sens que pour arbitrer — c'est le contexte « décider des actions prioritaires de la semaine » qui l'a fait apparaître. Le vocabulaire se resserre aussi : « Livraison / respect des délais » remplace « Livraison / délais », « Constat » remplace « Analyse ». Les émojis décoratifs disparaissent au profit de pastilles 🔴/🟢 fonctionnelles, qui codent le sentiment.
 
-_(à compléter)_
+**Mais une régression apparaît** : le thème Livraison ne référence plus que **A01 et A08**, alors que V1 avait correctement identifié A01, A07 et A08. L'avis A07 (« Livraison très rapide, deux jours seulement ») a été perdu sur ce thème.
+
+| Thème | V1 | V2 | Référence |
+|---|---|---|---|
+| Livraison | A01, A07, A08 | **A01, A08** ❌ | A01, A07, A08 |
+| Support client | A01, A05 | A01, A05 ✅ | A01, A05 |
+| Application mobile | — (hors cadrage) | A03, A06 ✅ | A03, A06 |
+
+**Ce que l'ajout a corrigé — et ce qu'il a cassé :**
+
+Le **Contexte** est la composante qui fait passer de *décrire* à *hiérarchiser*. C'est un gain réel : la colonne Intensité et l'angle « priorisation » rendent la sortie directement actionnable par le responsable SAV. Le **Rôle** contribue au registre métier.
+
+Mais cette version démontre aussi un point important : **ajouter une composante ne garantit pas une amélioration sur tous les critères**. En orientant le modèle vers la priorisation, on l'a implicitement poussé à ne retenir que les avis *saillants* de chaque thème — A07, positif et secondaire, a été écarté au profit du contraste A01/A08.
+
+C'est exactement le rôle des **Contraintes** (V3) : sans la règle explicite « un même avis peut relever de plusieurs thèmes » et « n'invente aucun chiffre », rien n'oblige le modèle à l'exhaustivité. L'orientation donnée par le contexte prend alors le pas sur la complétude.
+
+**Leçon retenue :** chaque composante doit être évaluée sur *tous* les critères, pas seulement sur celui qu'elle vise. Un prompt ne s'améliore pas linéairement.
 
 ---
 
