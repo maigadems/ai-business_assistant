@@ -1,0 +1,15 @@
+# Fichiers temporaires Microsoft Office (verrous de documents ouverts)
+~$*
+*.tmp
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# macOS
+.DS_Store
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
