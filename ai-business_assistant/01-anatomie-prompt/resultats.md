@@ -1,6 +1,7 @@
 # Partie 1 — Résultats obtenus et analyse
 
-**LLM utilisé :** _(à renseigner : nom du modèle et date d'exécution)_
+**LLM utilisé :** _(à renseigner : nom du modèle)_
+**Date d'exécution :** 12 septembre 2025
 **Protocole :** une conversation neuve par version, avis de [`data/avis-clients.md`](../data/avis-clients.md) collés à la place de `{avis}`.
 
 ---
@@ -13,11 +14,17 @@
 
 **Observations :**
 
-_(à compléter après exécution)_
+Le modèle **refuse d'analyser** et réclame les données : « Pour analyser réellement les retours clients, il me faut les données ». Il ne produit aucune analyse, mais propose en revanche un **plan méthodologique en 9 axes** (sentiment, thématiques, points forts, irritants, fréquence, priorisation, évolution, verbatims, recommandations), puis conclut par « Envoie-moi le fichier ou les retours clients ».
+
+Fait notable : la réponse contient une **citation de source externe** (`easiware.com`), signe que le modèle a comblé le vide de la consigne en puisant dans ses connaissances générales sur l'analyse de verbatims.
 
 **Ce que cette version révèle :**
 
-_(à compléter)_
+Sans **données** ni **tâche** précise, le modèle ne peut que deviner l'intention. Ici il a choisi la stratégie la plus prudente — demander des précisions — mais rien ne garantit ce comportement : selon le modèle ou la formulation, il aurait tout aussi bien pu **inventer des avis fictifs** et les analyser, produisant un résultat plausible et entièrement faux.
+
+Le plan en 9 axes qu'il propose est d'ailleurs instructif : il montre que le modèle *sait* quoi faire, mais qu'il ignore lequel de ces 9 axes on attend de lui. C'est exactement la décision que la composante **Tâche** doit lui retirer.
+
+Cette version sert de **référence de départ** : tout ce que les versions suivantes ajoutent se mesure par rapport à cette réponse vide.
 
 ---
 
