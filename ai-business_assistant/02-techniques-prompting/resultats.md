@@ -100,3 +100,68 @@ C'est une leçon transposable : le choix des exemples importe davantage que leur
 Entre T1 et T2, une seule variable a changé — la présence d'un exemple non pertinent. Le résultat inchangé permet d'attribuer proprement à T3 (few-shot avec cas mixte) et T4 (règle explicite) tout écart qui apparaîtrait ensuite.
 
 **Prédiction pour T3 :** le few-shot contient un cas mixte (A07) résolu en `négatif`. Si la classe reste `négatif`, deux interprétations resteront possibles — imitation de l'exemple, ou même raisonnement implicite qu'en T1. Le départage se fera sur T4, où la règle est énoncée et la justification demandée.
+
+---
+
+## T3 — Few-shot
+
+**Prompt :** voir [`prompts.md`](prompts.md#t3--few-shot)
+
+![Résultat few-shot](captures/03-few-shot.png)
+
+**Réponse obtenue (intégrale) :**
+
+```text
+Classe : négatif
+```
+
+**Observations :**
+
+| Critère | Constat | Écart avec T1 et T2 |
+|---|---|---|
+| Classe choisie | `négatif` | **identique** |
+| Justification | ❌ aucune | identique |
+| Format | ✅ `Classe : <valeur>` | identique |
+| Verbosité | ✅ minimale — 3 mots | identique |
+| Ambiguïté signalée | ❌ non | identique |
+| Taxonomie respectée | ✅ | identique |
+
+**Trois techniques, trois réponses rigoureusement identiques**, alors que le coût en tokens a été multiplié par environ quatre entre T1 et T3.
+
+**Analyse :**
+
+Le quatrième exemple couvrait pourtant bien le cas difficile, contrairement à celui du one-shot :
+
+> « Livraison très rapide, deux jours seulement. Dommage que l'article soit arrivé avec une rayure sur le côté. » → `négatif`
+
+C'est un cas mixte résolu, structurellement analogue au commentaire à classer (un point positif, un point négatif, le négatif l'emportant). L'exemple *enseignait* donc bien la règle « quand c'est mixte, le défaut l'emporte ».
+
+**Et pourtant il n'a rien changé.** Ce qui conduit à la conclusion suivante : le modèle appliquait **déjà** cette règle en zero-shot. L'exemple n'a pas enseigné un comportement, il a confirmé un comportement préexistant.
+
+**Ce que cette convergence établit — et ce qu'elle n'établit pas :**
+
+✅ **Établi :** sur ce cas, les exemples n'apportent aucun gain de classification. La règle implicite du modèle coïncide avec celle qu'on voulait lui transmettre.
+
+❌ **Non établi :** on ne peut **pas** conclure que le few-shot est inutile en général. Deux réserves importantes :
+
+1. **Un seul cas testé.** La convergence sur A03 ne dit rien du comportement sur un commentaire mixte dont on voudrait qu'il soit classé *positif* — là, l'exemple devrait faire une différence, puisqu'il faudrait contredire la règle implicite du modèle.
+2. **Une seule exécution par technique.** Sans test de stabilité, on ignore si le few-shot *réduit la variance* entre exécutions. C'est un de ses bénéfices attendus, et il est invisible sur un tirage unique.
+
+**La question restée ouverte :**
+
+Trois techniques donnent `négatif`, mais **aucune ne dit pourquoi**. Impossible de distinguer :
+
+- un modèle qui a identifié le caractère mixte et appliqué délibérément une règle de priorité au défaut ;
+- un modèle qui a simplement détecté le mot « plante » et classé sur ce signal.
+
+Les deux produisent la même étiquette sur ce cas, et divergeraient sur d'autres. **C'est exactement ce que T4 va permettre de trancher**, en exigeant une justification et un champ `mixte` explicite.
+
+**Coût comparé :**
+
+| Technique | Longueur du prompt | Résultat |
+|---|---|---|
+| T1 zero-shot | ~3 lignes | `négatif` |
+| T2 one-shot | ~8 lignes | `négatif` |
+| T3 few-shot | ~17 lignes | `négatif` |
+
+Sur ce cas précis, **T1 offre le meilleur rapport qualité/coût** : le même résultat pour un cinquième des tokens. Un enseignement contre-intuitif, qui rappelle qu'ajouter des exemples n'est pas une amélioration par défaut — c'est un investissement qui doit se justifier par un gain mesuré.
