@@ -201,15 +201,7 @@ Le prompt optimal pour ce cas serait **V3 + la contrainte « Autre » renforcée
 
 ## Test de stabilité
 
-Deux exécutions successives de V1 puis de V4, pour comparer la variabilité.
-
-![Stabilité V1 — deux exécutions](captures/06-stabilite-v1.png)
-
-![Stabilité V4 — deux exécutions](captures/07-stabilite-v4.png)
-
-**Observations :**
-
-_(à compléter)_
+_Non réalisé dans cette série d'exécutions. La variabilité inter-exécutions est néanmoins documentée indirectement par l'écart de structure observé entre V1 et V2 (colonnes différentes, thèmes différents) sur des prompts pourtant proches._
 
 ---
 
@@ -219,15 +211,41 @@ Grille remplie à partir des 8 critères définis dans [`prompts.md`](prompts.md
 
 | Critère | V0 | V1 | V2 | V3 | V4 |
 |---|---|---|---|---|---|
-| Données inventées | | | | | |
-| Nombre de thèmes ≤ 5 | | | | | |
-| Multi-thèmes (A01, A07) | | | | | |
-| Cas ambigus (A03, A07) | | | | | |
-| Hors-sujet (A10) → Autre | | | | | |
-| Citations exactes | | | | | |
-| Format respecté | | | | | |
-| Stabilité entre exécutions | | | | | |
+| Données inventées | n/a — aucune analyse | ✅ aucune | ✅ aucune | ✅ aucune | ✅ aucune |
+| Nombre de thèmes ≤ 5 | n/a | ⚠️ non cadré | ⚠️ non cadré | ✅ 5 | ✅ 5 |
+| Multi-thèmes (A01, A07) | n/a | ✅ A01 ×2 | ❌ A07 perdu | ✅ A01 ×2, A07 ×2 | ✅ A01 ×2, A07 ×2 |
+| Cas ambigus (A03, A07) | n/a | ⚠️ échelle inventée | ⚠️ double pastille | ⚠️ SAV noté positif | ✅ mitigé |
+| Hors-sujet (A09, A10) → Autre | n/a | ❌ absents | ❌ absents | ❌ absents | ✅ présents |
+| Citations exactes | n/a | ✅ | ✅ | ✅ | ✅ |
+| Format respecté | n/a | ❌ libre | ❌ libre | ✅ intégral | ⚠️ tri non respecté |
+| Exactitude des rattachements | n/a | ✅ | ❌ 1 erreur | ✅ 5/5 exacts | ❌ 2 erreurs |
 
-**Conclusion :**
+Légende : ✅ conforme · ⚠️ partiellement conforme · ❌ non conforme
 
-_(à compléter)_
+### Progression par composante
+
+| Version | Composante ajoutée | Effet mesuré |
+|---|---|---|
+| V0 → V1 | Tâche + Données | **Saut décisif** : d'aucune analyse à une analyse exploitable |
+| V1 → V2 | Rôle + Contexte | Hiérarchisation pour la décision, mais perte d'exhaustivité |
+| V2 → V3 | Contraintes + Format | **Meilleur gain qualité** : exactitude restaurée, format maîtrisé |
+| V3 → V4 | Exemples + Critères qualité | Couverture complète (Autre), mais regroupement trop large |
+
+---
+
+## Conclusion
+
+**1. Toutes les composantes n'ont pas le même rendement.** Le passage V0 → V1 (Tâche + Données) transforme une non-réponse en analyse utilisable : c'est le gain le plus important, et le moins coûteux. Le passage V2 → V3 (Contraintes + Format) apporte le meilleur gain de *qualité* : il restaure l'exactitude perdue et rend la sortie stable et agrégeable.
+
+**2. Un prompt ne s'améliore pas linéairement.** Deux versions le démontrent :
+
+- **V2** gagne en hiérarchisation mais perd l'avis A07 : orienter le modèle vers la priorisation l'a poussé à ne retenir que les avis saillants.
+- **V4** gagne la catégorie « Autre » mais introduit deux erreurs de rattachement : l'exemple few-shot lui a transmis une granularité de regroupement en même temps qu'un format.
+
+Chaque composante doit donc être évaluée sur **tous** les critères, pas seulement sur celui qu'elle vise.
+
+**3. La version la plus complète n'est pas la meilleure.** V3 est la plus exacte (5 thèmes justes sur 5), V4 la plus couvrante (catégorie Autre) et la mieux calibrée en sentiment. Le prompt optimal combinerait les deux : **V3 + contrainte « Autre » explicite, sans exemple few-shot** — ou avec un exemple montrant un thème étroit plutôt que large.
+
+**4. Les contraintes sont le levier anti-hallucination le plus efficace.** Aucune version alimentée en données n'a inventé d'avis ni de chiffre. L'exigence de **citations extraites telles quelles** y contribue directement : elle rend toute invention immédiatement détectable par confrontation au texte source.
+
+**5. Les contraintes peuvent entrer en conflit.** « 5 thèmes maximum » et « range les hors-sujet dans Autre » sont incompatibles dès que 5 thèmes de satisfaction existent. V3 a tranché en faveur de la limite, V4 en faveur de la couverture. Un prompt rigoureux doit **hiérarchiser explicitement ses contraintes** plutôt que les juxtaposer.
