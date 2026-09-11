@@ -166,3 +166,107 @@ Ce qu'elle a changé :
 4. **Contestabilité** — les choix étant exposés, ils peuvent être discutés et le prompt corrigé.
 
 **La décomposition n'améliore pas la réponse, elle la rend vérifiable.** C'est un objectif différent, et c'est précisément ce dont on a besoin dès qu'une analyse sert à décider.
+
+---
+
+# Exercice 2 — Auto-vérification
+
+## P3 — Self-check
+
+**Prompt :** voir [`prompts.md`](prompts.md#p3--prompt-de-vérification) — envoyé dans la même conversation que P2.
+
+![Résultat de l'auto-vérification](captures/03-self-check.png)
+
+**Réponse obtenue — synthèse par point :**
+
+| Point contrôlé | Verdict du modèle |
+|---|---|
+| 1. Informations non justifiées | ⚠️ une nuance relevée (gravité du thème application) |
+| 2. Contradictions | « aucun » |
+| 3. Informations absentes | ⚠️ deux omissions mineures relevées, jugées non significatives |
+| 4. Hallucinations | « aucun » |
+| 5. Respect des contraintes | 3/3 respectées |
+| **Verdict final** | « utilisable telle quelle », avec une nuance |
+
+**Observations :**
+
+| Critère | Constat |
+|---|---|
+| Erreurs réelles détectées | ✅ une, et c'est la bonne |
+| Fausses erreurs signalées | ✅ aucune |
+| Auto-complaisance | ⚠️ partielle |
+| Verdict cohérent avec les constats | ✅ oui |
+
+### Le résultat n'est ni complaisance ni audit complet
+
+Les deux hypothèses du cadrage étaient trop tranchées. Le modèle n'a ni tout validé aveuglément, ni conduit un audit exhaustif.
+
+**Ce qu'il a réellement trouvé — et c'est une vraie faille :**
+
+> « le thème "Problèmes de fonctionnement de l'application" regroupe **deux problèmes différents**, dont A06 est clairement bloquant pour l'achat, tandis que A03 ne l'est pas explicitement »
+
+Cette critique est **fondée et non triviale**. Elle porte sur le point le plus discutable de la réponse P2 : le thème hérite d'une gravité « élevée » alors qu'un seul de ses deux avis la justifie. Le modèle avait déjà signalé ce raisonnement à l'étape 3 de P2 ; ici il le requalifie en **faiblesse** plutôt qu'en simple explication.
+
+Il a donc été capable de revenir sur son propre raisonnement d'un œil critique — ce n'est pas de la complaisance.
+
+**Ce qu'il a manqué — et c'était le plus important :**
+
+Le point 3 (« informations absentes ») demandait quels éléments des avis avaient été omis. Le modèle répond sur des détails — les dates « le 3 » et « le 12 » de A01, le « deux jours » de A07 — et conclut « aucun problème significatif ».
+
+**Il a raté l'omission majeure : A05 et A08 contredisent partiellement son propre diagnostic.**
+
+| Avis omis | Ce qu'il contient | Pourquoi c'est important |
+|---|---|---|
+| A05 | « support par chat, réponse en moins de 5 minutes, problème réglé » | Le thème P2 affirme une « absence de réponse aux relances » — A05 montre que le support fonctionne bien par ailleurs |
+| A08 | « les délais sont tenus et le suivi est clair » | Le thème P2 pointe des « délais de livraison » problématiques — A08 dit l'inverse |
+
+Un diagnostic qui conclut « problème de livraison » et « support silencieux » sans mentionner que d'autres clients louent précisément les délais et la réactivité du support est **incomplet et potentiellement trompeur**. Le responsable qui lit P2 peut engager une refonte logistique sur la foi d'un seul avis négatif.
+
+**Pourquoi le modèle est passé à côté :** il s'est justifié par la consigne de P2 — l'étape 1 demandait d'extraire *les problèmes*, donc les avis positifs étaient légitimement classés « aucun problème ». Le raisonnement est correct **au regard du prompt**, et c'est précisément le problème : l'auto-vérification a contrôlé la conformité à la consigne, pas la validité de l'analyse.
+
+### La limite structurelle de l'auto-vérification
+
+Le modèle a audité sa réponse **avec le même cadre de pensée qui l'a produite**. Il ne pouvait pas voir que le découpage en cinq étapes — celui de P2, que j'ai écrit — perdait l'information positive, parce que ce découpage était pour lui le référentiel, non l'objet de l'examen.
+
+**L'auto-vérification détecte les incohérences internes, pas les angles morts du prompt.** C'est une distinction opérationnelle importante :
+
+| L'auto-vérification détecte | L'auto-vérification ne détecte pas |
+|---|---|
+| Contradictions internes | Un cadrage biaisé en amont |
+| Chiffres inventés | Une question qu'on n'a pas pensé à poser |
+| Contraintes enfreintes | Ce que la consigne elle-même fait perdre |
+| Raisonnements fragiles | Une taxonomie inadaptée |
+
+### La consigne anti-invention a fonctionné
+
+« Si tu ne trouves aucun problème sur un point, écris "aucun" — ne cherche pas à en inventer » a produit l'effet voulu : deux « aucun » francs (contradictions, hallucinations), et **aucune fausse erreur fabriquée** pour paraître rigoureux. Sans cette consigne, le risque était d'obtenir cinq critiques artificielles.
+
+Le verdict final est également cohérent : « utilisable telle quelle, avec une nuance » correspond exactement aux constats — une faiblesse réelle mais non rédhibitoire.
+
+### Valeur opérationnelle de la technique
+
+**L'auto-vérification a une valeur réelle mais partielle.** Elle a détecté une faiblesse de raisonnement authentique, sans en inventer. C'est un filet utile, et peu coûteux.
+
+Elle ne peut pas remplacer :
+
+- une **confrontation aux données sources** par un tiers — seule capable de voir qu'A05 et A08 manquent ;
+- une **vérification par un second modèle ou une seconde conversation**, sans le contexte du premier raisonnement ;
+- une **relecture du prompt lui-même**, qui est ici la vraie source du défaut.
+
+**Recommandation :** utiliser le self-check comme premier filtre, mais faire porter la vérification décisive sur le **prompt d'origine**, pas sur la réponse. Dans le cas présent, la correction ne consiste pas à retoucher la réponse de P2 — elle consiste à ajouter une étape 6 à P2 : *« Relève les avis qui contredisent ou nuancent les problèmes identifiés. »*
+
+---
+
+# Synthèse de la Partie 3
+
+| Enseignement | Source |
+|---|---|
+| Un mot non défini (« important ») transfère silencieusement une décision au modèle | P1 |
+| Le modèle peut faire un bon choix implicite — mais c'est son choix, pas le vôtre | P1 |
+| Sans contrainte d'ancrage, les recommandations viennent du savoir général, pas des données | P1 vs P2 |
+| Décomposer n'améliore pas le diagnostic, mais le rend auditable étape par étape | P2 |
+| Donner une formule à produire (« cause non précisée ») bat une interdiction à respecter | P2 |
+| Un modèle contraint signale l'indécidabilité au lieu de trancher en silence | P2 |
+| L'auto-vérification trouve les incohérences internes… | P3 |
+| …mais pas les angles morts du prompt, qu'elle prend pour référentiel | P3 |
+| La vérification décisive porte sur le prompt, pas sur la réponse | P3 |
