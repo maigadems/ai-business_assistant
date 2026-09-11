@@ -101,4 +101,14 @@ Voir [`prompt-final.md`](prompt-final.md).
 
 ## 6. Ce que j'en retiens
 
-_(à compléter après exécution des prompts)_
+Les cinq versions ont été exécutées sur ChatGPT, en conversation neuve à chaque fois. Résultats détaillés dans [`resultats.md`](resultats.md).
+
+**Un prompt est un assemblage, et chaque brique a un rendement différent.** Ajouter la Tâche et les Données transforme une non-réponse en analyse utilisable : c'est le gain le plus important. Ajouter les Contraintes et le Format apporte le meilleur gain de qualité : exactitude restaurée, sortie stable et agrégeable.
+
+**L'amélioration n'est pas linéaire.** Deux versions l'ont montré de façon nette : V2 gagne en hiérarchisation mais perd un avis, V4 gagne la catégorie « Autre » mais fusionne deux thèmes distincts. Une composante peut améliorer le critère qu'elle vise tout en dégradant un autre — d'où la nécessité d'une grille d'évaluation multi-critères plutôt que d'un jugement global.
+
+**La version la plus complète n'est pas automatiquement la meilleure.** V4, qui contient les 9 composantes, est moins exacte que V3 sur les rattachements. Le prompt final retenu n'est donc ni l'une ni l'autre, mais leur synthèse corrigée — voir [`prompt-final.md`](prompt-final.md).
+
+**Les exemples few-shot transmettent plus que le format.** L'exemple de V4 montrait un thème large ; le modèle en a déduit une granularité de regroupement qu'on ne cherchait pas à lui enseigner. C'est le principal piège de cette composante, et la raison de son coût réel au-delà des tokens.
+
+**Les contraintes doivent être hiérarchisées, pas juxtaposées.** « 5 thèmes maximum » et « range les hors-sujet dans Autre » sont entrées en conflit : V3 a sacrifié la couverture, V4 la limite. Un prompt rigoureux dit lequel l'emporte.
