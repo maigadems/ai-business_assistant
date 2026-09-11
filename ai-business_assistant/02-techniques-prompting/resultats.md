@@ -50,3 +50,53 @@ Le résultat contredit l'hypothèse formulée dans [`prompts.md`](prompts.md#t1-
 Le zero-shot est **imbattable en coût** : consigne de trois lignes, réponse de trois mots. Pour un cas simple et non ambigu, il suffit.
 
 Sa faiblesse n'apparaît que sur les cas limites, et elle est silencieuse : **la réponse a l'air parfaite**. Rien ne signale qu'une décision arbitraire a été prise sur un cas qui ne rentrait dans aucune case. C'est précisément ce qui rend cette technique risquée en production — l'erreur ne se voit pas.
+
+---
+
+## T2 — One-shot
+
+**Prompt :** voir [`prompts.md`](prompts.md#t2--one-shot)
+
+![Résultat one-shot](captures/02-one-shot.png)
+
+**Réponse obtenue (intégrale) :**
+
+```text
+Classe : négatif
+```
+
+**Observations :**
+
+| Critère | Constat | Écart avec T1 |
+|---|---|---|
+| Classe choisie | `négatif` | **identique** |
+| Justification | ❌ aucune | identique |
+| Format | ✅ `Classe : <valeur>` | identique |
+| Verbosité | ✅ minimale — 3 mots | identique |
+| Ambiguïté signalée | ❌ non | identique |
+| Taxonomie respectée | ✅ | identique |
+
+**La réponse est rigoureusement identique au zero-shot, sur les six critères.**
+
+**Analyse :**
+
+Ce résultat sans écart est en réalité le plus instructif de la série, à condition de l'interpréter correctement. Il ne signifie pas que le one-shot est inutile en général — il signifie que **cet exemple-là n'apportait rien à ce cas-là**.
+
+L'exemple fourni était :
+
+> « Produit conforme à la description, emballage soigné. » → `positif`
+
+Il enseigne deux choses : le **format** de réponse (`Classe : <valeur>`) et un **cas franchement positif**. Or :
+
+- Le format était déjà correct en zero-shot — le modèle l'avait déduit seul de la structure de la consigne. L'exemple confirme un comportement acquis.
+- Le cas positif n'a **aucun rapport** avec la difficulté à résoudre, qui est un cas *mixte*. L'exemple ne dit rien de ce qu'il faut faire quand positif et négatif coexistent.
+
+**Conclusion : un exemple qui ne couvre pas le cas difficile ne coûte que des tokens.**
+
+C'est une leçon transposable : le choix des exemples importe davantage que leur nombre. Un exemple few-shot n'a de valeur que s'il **désambiguïse une décision que la consigne laisse ouverte**. Ici, la consigne laissait ouverte la règle des cas mixtes, et l'exemple parlait d'autre chose.
+
+**Ce que cette comparaison isole :**
+
+Entre T1 et T2, une seule variable a changé — la présence d'un exemple non pertinent. Le résultat inchangé permet d'attribuer proprement à T3 (few-shot avec cas mixte) et T4 (règle explicite) tout écart qui apparaîtrait ensuite.
+
+**Prédiction pour T3 :** le few-shot contient un cas mixte (A07) résolu en `négatif`. Si la classe reste `négatif`, deux interprétations resteront possibles — imitation de l'exemple, ou même raisonnement implicite qu'en T1. Le départage se fera sur T4, où la règle est énoncée et la justification demandée.
