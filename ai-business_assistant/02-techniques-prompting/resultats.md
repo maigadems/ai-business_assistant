@@ -165,3 +165,100 @@ Les deux produisent la même étiquette sur ce cas, et divergeraient sur d'autre
 | T3 few-shot | ~17 lignes | `négatif` |
 
 Sur ce cas précis, **T1 offre le meilleur rapport qualité/coût** : le même résultat pour un cinquième des tokens. Un enseignement contre-intuitif, qui rappelle qu'ajouter des exemples n'est pas une amélioration par défaut — c'est un investissement qui doit se justifier par un gain mesuré.
+
+---
+
+## T4 — Prompt structuré
+
+**Prompt :** voir [`prompts.md`](prompts.md#t4--prompt-structuré)
+
+![Résultat prompt structuré](captures/04-structure.png)
+
+**Réponse obtenue (intégrale) :**
+
+```json
+{
+  "classe": "négatif",
+  "mixte": true,
+  "justification": "Le service est rapide, mais l'application plante régulièrement, ce qui exprime une insatisfaction."
+}
+```
+
+**Observations :**
+
+| Critère | Constat | Écart avec T1–T3 |
+|---|---|---|
+| Classe choisie | `négatif` | identique |
+| Justification | ✅ fournie, citant les deux éléments | **nouveau** |
+| Format | ✅ JSON valide, sans texte parasite | **nouveau** |
+| Verbosité | ⚠️ 4 lignes contre 3 mots | plus verbeux |
+| Ambiguïté signalée | ✅ `"mixte": true` | **nouveau** |
+| Taxonomie respectée | ✅ | identique |
+
+**Analyse :**
+
+**La classe est la même, mais tout le reste a changé.** Les quatre techniques convergent sur `négatif` — ce qui confirme que la classification elle-même n'était pas le problème. Le problème était l'**absence de tout le contexte autour de cette classification**.
+
+Trois gains, chacun répondant à un manque identifié dans les techniques précédentes :
+
+**1. `"mixte": true` — l'information sauvée.**
+
+C'est le gain principal. Les trois premières techniques perdaient définitivement le fait que ce commentaire contient aussi un compliment. Ici, l'information est conservée dans un champ exploitable. Une entreprise agrégeant 10 000 avis peut désormais répondre à la question « combien de nos avis négatifs contiennent malgré tout un point de satisfaction ? » — question impossible avec une étiquette nue.
+
+**2. La justification tranche la question laissée ouverte par T3.**
+
+La justification citée est :
+
+> « Le service est rapide, **mais** l'application plante régulièrement, ce qui exprime une insatisfaction. »
+
+Elle mentionne **les deux éléments** et articule leur relation. Cela écarte l'hypothèse d'une classification par simple détection du mot « plante » : le modèle a bien identifié la structure mixte du commentaire et appliqué la règle de priorité au défaut.
+
+On ne peut pas pour autant affirmer que les techniques T1–T3 procédaient du même raisonnement — on sait seulement qu'**ici**, le raisonnement est correct et vérifiable. C'est précisément la différence : la sortie de T4 est **auditable**, celle de T1 ne l'était pas.
+
+**3. Le JSON est directement consommable.**
+
+Aucun texte avant ni après, structure conforme, champs exactement ceux demandés. `json.loads()` fonctionne sans nettoyage préalable — condition nécessaire pour une intégration applicative.
+
+**Le coût :**
+
+Le prompt structuré est de loin le plus long des quatre (~30 lignes contre 3 pour le zero-shot), et la réponse est plus verbeuse. Ce coût est **assumé et justifié** : il achète la traçabilité, la conservation de l'information et l'exploitabilité machine.
+
+**Ce que cette technique établit :**
+
+Le prompt structuré et le few-shot visent le même objectif — lever l'ambiguïté — par des moyens opposés : **l'exemple montre, la règle énonce**. Sur ce cas, la règle l'emporte nettement, pour une raison structurelle : un exemple ne peut pas transmettre un champ `mixte` ni exiger une justification. Il ne transmet qu'un comportement d'entrée-sortie.
+
+Autrement dit, le few-shot enseigne **quoi répondre** ; le prompt structuré définit **quoi produire et comment le justifier**.
+
+---
+
+## Synthèse comparative des quatre techniques
+
+| Critère | T1 zero-shot | T2 one-shot | T3 few-shot | T4 structuré |
+|---|---|---|---|---|
+| Classe choisie | négatif | négatif | négatif | négatif |
+| Justification fournie | ❌ | ❌ | ❌ | ✅ |
+| Format exploitable | ⚠️ texte | ⚠️ texte | ⚠️ texte | ✅ JSON |
+| Verbosité de la réponse | 3 mots | 3 mots | 3 mots | 4 lignes |
+| Longueur du prompt | ~3 lignes | ~8 lignes | ~17 lignes | ~30 lignes |
+| Ambiguïté signalée | ❌ | ❌ | ❌ | ✅ `mixte: true` |
+| Taxonomie respectée | ✅ | ✅ | ✅ | ✅ |
+| Sortie auditable | ❌ | ❌ | ❌ | ✅ |
+
+### Conclusions
+
+**1. La convergence sur la classe est le résultat central.** Les quatre techniques donnent `négatif`. Sur ce cas, **la difficulté n'était pas de classer** — le modèle savait le faire dès le zero-shot. La difficulté était de rendre la classification vérifiable et de ne pas perdre l'information de nuance.
+
+**2. Les exemples n'ont rien apporté ici, mais pour des raisons différentes.** En T2, l'exemple ne couvrait pas le cas difficile : coût pur. En T3, l'exemple couvrait bien le cas mixte, mais enseignait une règle que le modèle appliquait déjà : redondance. **Un exemple n'a de valeur que s'il corrige un comportement par défaut indésirable.**
+
+**3. Le gain du prompt structuré n'est pas dans la classe, il est dans tout le reste.** `mixte: true`, la justification vérifiable et le JSON parsable sont trois choses qu'aucune quantité d'exemples n'aurait produites. Ce sont des propriétés qui se **spécifient**, pas qui s'**imitent**.
+
+**4. Le choix de technique dépend de l'usage, pas d'une hiérarchie absolue :**
+
+| Situation | Technique recommandée |
+|---|---|
+| Classification simple, usage ponctuel, cas non ambigus | **Zero-shot** — même résultat, coût minimal |
+| Format de sortie inhabituel à faire adopter | **One/few-shot** — l'exemple est plus économique qu'une description |
+| Comportement par défaut du modèle à corriger | **Few-shot** — l'exemple contredit la règle implicite |
+| Intégration applicative, audit, taxonomie contrainte | **Prompt structuré** — le seul à produire une sortie auditable |
+
+**5. Limites de cette comparaison.** Un seul commentaire, une seule exécution par technique. La stabilité inter-exécutions — bénéfice attendu du few-shot — n'a pas été mesurée, et un cas mixte devant être classé *positif* aurait probablement départagé les techniques autrement. Ces angles morts sont repris en **Partie 8** (évaluation et optimisation des prompts).
