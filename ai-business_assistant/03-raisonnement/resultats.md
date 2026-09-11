@@ -79,3 +79,90 @@ Le prompt vague produit une réponse **impressionnante et largement juste sur le
 - aucune étape n'est vérifiable isolément : pour contrôler le classement, il faut relire toute la réponse.
 
 **C'est exactement ce que la décomposition (P2) doit corriger** — non pas en rendant le modèle plus intelligent, mais en rendant chaque étape auditable et en ancrant explicitement les recommandations dans les données.
+
+---
+
+## P2 — Prompt décomposé
+
+**Prompt :** voir [`prompts.md`](prompts.md#p2--prompt-décomposé)
+
+![Résultat du prompt décomposé](captures/02-prompt-decompose.png)
+
+**Réponse obtenue (extraits) :**
+
+**Étape 1 — Extraction** : un problème par avis, avec « aucun problème » pour A02, A05, A08, A09 **et A10**.
+
+**Étape 2 — Regroupement** : 4 thèmes (livraison+relances, application, prix, produit endommagé).
+
+**Étape 3 — Mesure** :
+
+| Thème | Fréquence | Gravité |
+|---|---:|---|
+| Délais de livraison et absence de réponse aux relances | 1 | Élevée |
+| Problèmes de fonctionnement de l'application | 2 | Élevée |
+| Prix jugé trop élevé | 1 | Moyenne |
+| Produit endommagé à la livraison | 1 | Moyenne |
+
+**Étape 4 — Priorisation** : Application (1) > Livraison (2) > Prix (3) > Produit endommagé (4).
+
+**Étape 5 — Recommandations** : trois actions, dont deux portant la mention « cause non précisée dans les avis ».
+
+**Observations :**
+
+| Critère | P1 vague | P2 décomposé |
+|---|---|---|
+| Critère de priorité explicite | ⚠️ justifié a posteriori | ✅ règle appliquée et citée |
+| Classement obtenu | Application > Livraison > Qualité > Prix > Boutiques | Application > Livraison > Prix > Produit |
+| Étapes vérifiables séparément | ❌ monolithique | ✅ 5 étapes distinctes |
+| Recommandations ancrées | ❌ ~20, largement extrapolées | ✅ 3, toutes ancrées |
+| Causes inventées | ⚠️ frôlées | ✅ aucune, mention explicite |
+| A10 traité comme problème | ❌ oui | ✅ non — « aucun problème » |
+
+### Le gain principal : les recommandations redeviennent des recommandations
+
+C'est l'écart le plus net entre les deux versions.
+
+| | P1 | P2 |
+|---|---|---|
+| Nombre de recommandations | ~20 | 3 |
+| Ancrées dans les avis | minoritaires | toutes |
+| Exemples produits | « tests automatisés », « versions d'OS », « conditions de stockage », « programmes de fidélité » | « corriger les plantages signalés lors de la consultation de l'historique et au moment du paiement » |
+
+P2 ne recommande plus rien qui ne réponde à un problème effectivement présent dans les avis. Les extrapolations ont disparu — non parce que le modèle en sait moins, mais parce que la contrainte « ne propose aucune recommandation qui ne corresponde pas à un thème identifié à l'étape 2 » lui interdit de mobiliser son savoir général.
+
+**Contrepartie assumée :** P2 est beaucoup moins riche. Les recommandations de P1 étaient utiles — un responsable technique voudra bien tester sur plusieurs OS. Mais elles étaient présentées comme issues de l'analyse alors qu'elles n'en venaient pas. **P2 sépare ce que les données disent de ce que le modèle sait.** C'est cette séparation qui a de la valeur, pas l'appauvrissement en soi.
+
+### La mention « cause non précisée dans les avis » fonctionne
+
+Deux recommandations sur trois la portent. C'est la contrainte anti-hallucination la plus efficace observée depuis le début de l'atelier : au lieu d'interdire au modèle d'inventer une cause — interdiction difficile à vérifier — elle lui donne **une formule à produire** à la place. L'absence d'information devient un élément positif de la réponse, donc contrôlable.
+
+À comparer avec P1, où le modèle écrivait « Identifier la cause du retard : préparation, transporteur ou traitement interne » — trois causes plausibles, aucune présente dans les avis.
+
+### La règle de priorité est appliquée, et sa trace est visible
+
+L'étape 3 contient une phrase révélatrice :
+
+> « Selon la règle fournie, le thème "problèmes de fonctionnement de l'application" est donc de gravité élevée **à cause de A06**. »
+
+Le modèle explicite son raisonnement : A03 seul ne bloque pas l'achat, A06 si, donc le thème hérite de la gravité la plus élevée. Ce raisonnement était **invisible en P1**, où la conclusion identique arrivait sans démonstration.
+
+C'est la définition même d'une étape auditable : on peut contester ce choix d'héritage — fallait-il séparer A03 et A06 en deux thèmes ? — parce qu'il est exposé.
+
+### Deux limites relevées
+
+**1. A01 reste un thème double.** Comme en P1, « Délais de livraison **et** absence de réponse aux relances » fusionne deux problèmes appelant deux actions distinctes (logistique / support). La décomposition n'a pas corrigé ce point : l'étape 2 demandait de regrouper, sans interdire de regrouper deux problèmes hétérogènes issus du même avis.
+
+**2. Le classement 3/4 est arbitraire, mais le modèle le dit.** Prix et Produit endommagé ont même gravité et même fréquence. Le modèle écrit : « aucun élément des avis ne permet de les départager davantage ». Il signale l'indécidabilité au lieu de trancher en silence — comportement correct, qui révèle une **incomplétude de la règle de priorité** fournie dans le prompt. Une règle de rang 3 manquait.
+
+### Ce que la décomposition a réellement apporté
+
+Le **diagnostic est quasi identique** entre P1 et P2 : mêmes thèmes, même tête de classement. La décomposition n'a pas rendu le modèle plus perspicace.
+
+Ce qu'elle a changé :
+
+1. **Traçabilité** — chaque étape est contrôlable isolément. Une erreur à l'étape 1 se voit sans relire l'étape 5.
+2. **Ancrage** — la frontière entre les données et le savoir du modèle devient visible.
+3. **Signalement de l'incertitude** — « cause non précisée », « aucun élément ne permet de départager ».
+4. **Contestabilité** — les choix étant exposés, ils peuvent être discutés et le prompt corrigé.
+
+**La décomposition n'améliore pas la réponse, elle la rend vérifiable.** C'est un objectif différent, et c'est précisément ce dont on a besoin dès qu'une analyse sert à décider.
