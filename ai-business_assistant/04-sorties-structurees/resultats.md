@@ -138,3 +138,104 @@ Ce test rappelle la différence posée dans le cadrage entre **demander** et **g
 - Rien ici ne prouve qu'elles **empêcheraient** une sortie non conforme sur un autre commentaire, ou lors d'une autre exécution.
 
 **Une règle énoncée dans un prompt reste une instruction, pas une contrainte technique.** La garantie ne peut venir que d'une validation côté application — d'où le [`schema.json`](schema.json) produit dans cette partie, qui traduit les cinq règles en contrat vérifiable par du code.
+
+---
+
+## Q3 — Test sur cas ambigu
+
+**Prompt :** identique à Q2, seul le commentaire change — voir [`prompts.md`](prompts.md#q3--test-sur-cas-ambigu)
+
+**Commentaire testé :** « Le service est rapide mais l'application plante régulièrement dès que je veux consulter mon historique. » *(avis A03)*
+
+![Résultat sur cas ambigu](captures/03-cas-ambigu.png)
+
+**Réponse obtenue (intégrale) :**
+
+```json
+{"sentiment":"negatif","categorie":"application","urgence":"moyenne","probleme":"L'application plante régulièrement lors de la consultation de l'historique.","confiance":0.99}
+```
+
+**Observations :**
+
+| Critère | Constat |
+|---|---|
+| JSON valide | ✅ |
+| Règles 1 à 5 | ✅ toutes respectées |
+| `sentiment` | `negatif` — cohérent avec la Partie 2 |
+| `categorie` | `application` — correct |
+| `urgence` | `moyenne` — correctement abaissée par rapport à A01 |
+| **`confiance`** | ❌ **0.99 — l'ambiguïté n'est pas signalée** |
+
+### Le résultat : issue n° 2, l'ambiguïté est perdue silencieusement
+
+Des trois issues anticipées, c'est la deuxième qui s'est produite. La règle 3 a tenu — aucune nuance inventée — mais **le champ `confiance` n'a pas joué son rôle**.
+
+L'avis A03 contient explicitement un élément positif (« le service est rapide ») et un élément négatif (« l'application plante régulièrement »). La Partie 2 avait établi que le modèle *identifie* bien cette structure mixte : interrogé avec un champ `mixte` dédié, il répondait `true` et citait les deux éléments.
+
+**Ici, la même ambiguïté est écrasée en une certitude de 99 %.**
+
+### Le constat le plus fort : `confiance` est constante
+
+| Commentaire | Nature | `confiance` |
+|---|---|---|
+| A01 (Q1) — « c'est inadmissible », deux catégories possibles | négatif franc, catégorie discutable | **0.99** |
+| A01 (Q2) — idem, avec règles de validation | idem | **0.99** |
+| A03 (Q3) — mixte, positif + négatif | **ambigu par construction** | **0.99** |
+
+**Trois exécutions, trois fois exactement 0.99**, sur des commentaires de difficulté très différente. Le champ ne varie pas — il est **décoratif**.
+
+Un champ de confiance qui ne descend jamais n'apporte aucune information : il ne permet ni de trier les cas à revoir manuellement, ni de fixer un seuil de traitement automatique. Pire, **il donne une fausse assurance** : une application qui filtrerait sur `confiance > 0.9` laisserait passer tous les cas ambigus.
+
+### Pourquoi le champ échoue
+
+Deux causes se cumulent :
+
+**1. La consigne ne dit pas sur quoi porte la confiance.** « Ton niveau de certitude sur cette analyse » — quelle analyse ? Le sentiment ? La catégorie ? L'ensemble ? Face à cinq champs hétérogènes dont certains sont sûrs et d'autres non, un scalaire unique n'a pas de référent clair. Le modèle a répondu sur ce qui était le plus sûr.
+
+**2. Aucune règle ne relie `confiance` à l'ambiguïté.** Les cinq règles de l'énoncé contraignent le *domaine* de `confiance` (entre 0 et 1) mais jamais sa *sémantique*. Rien n'indique quand elle doit baisser. Or la Partie 3 l'a montré avec « cause non précisée dans les avis » : **le modèle signale l'incertitude quand on lui donne une formule à produire, pas quand on lui laisse le soin d'y penser.**
+
+### Correction proposée
+
+Ajouter une règle explicitant le comportement attendu :
+
+```text
+6. "confiance" reflète ta certitude sur le champ "sentiment" uniquement.
+   Si le commentaire contient à la fois un élément positif et un élément
+   négatif, "confiance" ne doit pas dépasser 0.7.
+```
+
+Cette règle est **vérifiable** : on peut confronter la valeur de `confiance` à la présence d'un « mais » ou de deux polarités dans le texte. Elle transforme un champ décoratif en signal exploitable.
+
+La correction alternative, plus robuste, consiste à **ne pas faire porter l'ambiguïté par un scalaire** mais par un champ dédié — le `"mixte": true` de la Partie 2, qui avait parfaitement fonctionné. Un booléen explicite bat un nombre dont la sémantique est implicite.
+
+---
+
+# Synthèse de la Partie 4
+
+## Grille comparative
+
+| Critère | Q1 (sans règles) | Q2 (avec règles) | Q3 (cas ambigu) |
+|---|---|---|---|
+| JSON valide | ✅ | ✅ | ✅ |
+| Texte parasite | ✅ aucun | ✅ aucun | ✅ aucun |
+| Exactement 5 champs | ✅ | ✅ | ✅ |
+| Énumérations respectées | ✅ | ✅ | ✅ |
+| `confiance` de type nombre | ✅ | ✅ | ✅ |
+| Mise en forme | indentée | minifiée | minifiée |
+| Ambiguïté signalée | n/a | n/a | ❌ |
+
+## Enseignements
+
+**1. Le JSON force à nommer l'implicite.** La prose de l'énoncé ne mentionnait aucune urgence ; le champ l'a fait apparaître. Structurer une sortie, ce n'est pas seulement la mettre en forme — c'est décider *quelles dimensions* comptent.
+
+**2. Ce qui est contraint est reproductible, ce qui est libre ne l'est pas.** Entre Q1 et Q2, les quatre champs énumérés ou numériques sont identiques au caractère près ; le seul champ libre, `probleme`, a été reformulé. **Un champ texte libre ne doit jamais servir de clé de filtrage ou de regroupement.**
+
+**3. Sur un cas facile, les règles de validation sont invisibles.** Q1 était déjà conforme. On ne peut donc pas conclure que les règles sont efficaces — seulement qu'elles ne dégradent rien. Leur valeur ne se mesure que face à un cas qui les met à l'épreuve.
+
+**4. Une contrainte formulée en négatif a une portée floue.** « Un JSON valide, et rien d'autre » a été étendu par le modèle jusqu'à supprimer l'indentation. Une formulation positive (« réponds par l'objet JSON indenté sur deux espaces ») est plus prévisible.
+
+**5. Contraindre le domaine d'un champ ne garantit pas qu'il porte du sens.** C'est l'enseignement principal. `confiance` respecte parfaitement sa règle — un nombre entre 0 et 1 — tout en étant **inutile** : constante à 0.99 sur trois cas de difficulté très différente. Une règle de *type* n'est pas une règle de *sémantique*.
+
+**6. L'ambiguïté doit être portée par un champ dédié, pas déduite.** La Partie 2 avait obtenu `"mixte": true` sur ce même avis A03, avec une justification citant les deux éléments. Ici, avec un scalaire à la sémantique implicite, la même information est perdue. **Un booléen explicite bat un nombre qu'on espère interprété correctement.**
+
+**7. La validation réelle est côté application.** Les cinq règles ont été respectées sur trois exécutions, mais rien ne le garantit à la quatrième. Voir [`schema.json`](schema.json), qui traduit ces règles en contrat exécutable.
