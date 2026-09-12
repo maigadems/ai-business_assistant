@@ -247,3 +247,108 @@ Conformément à ce qu'établit la [Partie 4](../04-sorties-structurees/resultat
 **2. Une bonne décision peut s'accompagner d'une mauvaise justification.** Les deux se contraignent séparément. Un système qui ne vérifierait que la catégorie validerait ce résultat ; un audit humain de la justification passerait à côté de l'argument décisif.
 
 **3. Demander « cite un élément » n'est pas demander « démontre ».** La formulation d'une contrainte détermine précisément ce qu'on obtient — ni plus, ni moins.
+
+---
+
+## 5.4 — Extraction de données de facture
+
+**Prompt :** voir [`prompts.md`](prompts.md#54--extraction-de-données-de-facture)
+**Sources :** les deux factures de [`facture.md`](../data/facture.md)
+
+### Exécution A — facture complète
+
+![Extraction facture A](captures/04-facture.png)
+
+**Réponse obtenue :**
+
+```json
+{
+  "numero_facture": "FA-2025-0847",
+  "date": "2025-10-14",
+  "client": "MAISON BERGER SAS",
+  "montant_ht": 1471.10,
+  "tva": 294.22,
+  "montant_ttc": 1765.32
+}
+```
+
+**Les quatre pièges sont déjoués :**
+
+| Piège | Attendu | Obtenu | ✓ |
+|---|---|---|---|
+| Deux dates (émission 14/10, échéance 13/11) | `2025-10-14` | `2025-10-14` | ✅ |
+| Deux entités (DUBOIS émetteur / BERGER client) | `MAISON BERGER SAS` | `MAISON BERGER SAS` | ✅ |
+| `CMD-2025-3391` confondable | `FA-2025-0847` | `FA-2025-0847` | ✅ |
+| Montants `1 471,10 €` (espace + virgule) | `1471.10` | `1471.10` | ✅ |
+
+**Sortie parfaite.** Les six champs sont exacts, la date est normalisée au format `AAAA-MM-JJ` demandé alors que la facture l'écrit en toutes lettres (« 14 octobre 2025 »), et les montants sont convertis en nombres décimaux anglo-saxons.
+
+Chacune des trois règles de désambiguïsation du prompt — date d'émission, client ≠ émetteur, format des montants — a produit son effet. Sans elles, les quatre pièges étaient des erreurs probables.
+
+### Exécution B — facture incomplète
+
+![Extraction facture B](captures/04b-facture-null.png)
+
+**Réponse obtenue :**
+
+```json
+{"numero_facture":null,"date":"2025-11-02","client":"Cabinet VERNET & Associés","montant_ht":null,"tva":0,"montant_ttc":null}
+```
+
+**Le test central est réussi :**
+
+| Champ | Attendu | Obtenu | Verdict |
+|---|---|---|---|
+| `numero_facture` | `null` | `null` | ✅ **aucune invention** |
+| `date` | `2025-11-02` | `2025-11-02` | ✅ |
+| `client` | `Cabinet VERNET & Associés` | idem | ✅ |
+| `tva` | `0` | `0` | ✅ règle franchise appliquée |
+| `montant_ht` | `3450.00` | `null` | ⚠️ voir ci-dessous |
+| `montant_ttc` | `3450.00` | `null` | ⚠️ voir ci-dessous |
+
+**C'est le seul endroit de l'atelier où l'on vérifie objectivement si le modèle invente — et il n'invente pas.** La facture B ne porte aucun numéro ; le modèle retourne `null` au lieu de fabriquer un identifiant plausible à partir de la date ou d'un montant. La consigne « retourne null pour tout champ dont l'information n'est pas présente » a fonctionné.
+
+La règle sur la franchise de TVA a également produit son effet : `tva: 0`, et non `null`. Sans cette règle, les deux réponses auraient été défendables — c'est l'ambiguïté que le [jeu de test](../data/facture.md) avait identifiée et que le prompt tranche explicitement.
+
+### Les deux `null` inattendus : une prudence excessive, mais cohérente
+
+`montant_ht` et `montant_ttc` valent `null` alors que le document affiche « Total à payer 3 450,00 € ».
+
+**Le modèle a appliqué la lettre de la règle :**
+
+> « n'invente jamais une valeur ; **ne la déduis pas d'un calcul si elle n'est pas écrite** »
+
+Or la facture B n'écrit ni « HT » ni « TTC » — elle dit « Total à payer ». Pour remplir les deux champs, il faut *raisonner* : en franchise de TVA, HT = TTC = total. Le modèle a refusé ce raisonnement, considérant qu'il s'agissait d'une déduction interdite.
+
+**Ce comportement est défendable, et même préférable dans un contexte comptable** : mieux vaut un champ vide qu'un montant mal qualifié. Mais il produit une extraction incomplète alors que l'information est présente.
+
+**La contrainte anti-invention a donc été trop large.** Formulée pour empêcher la fabrication, elle a aussi empêché une déduction légitime et vérifiable.
+
+Correction possible :
+
+```text
+- ne calcule pas un montant absent à partir d'autres montants, SAUF en cas de
+  franchise de TVA : dans ce cas, montant_ht et montant_ttc valent tous deux
+  le total indiqué
+```
+
+### Le compromis prudence / complétude
+
+Ces deux exécutions exposent un arbitrage qu'aucune formulation ne supprime :
+
+| Réglage du prompt | Risque |
+|---|---|
+| Contrainte anti-invention **stricte** | Champs vides alors que l'information existe *(cas observé)* |
+| Contrainte anti-invention **souple** | Montants déduits à tort, numéros fabriqués |
+
+**En extraction comptable, la prudence excessive est le bon défaut.** Un `null` se détecte et se corrige manuellement ; un montant inventé se propage silencieusement dans la comptabilité. Le comportement observé est donc le bon, même s'il est perfectible.
+
+### Ce que cette tâche établit
+
+**1. `null` est la meilleure contrainte anti-hallucination de l'atelier.** C'est la troisième confirmation du principe dégagé en Partie 3 : **donner une valeur à produire bat une interdiction à respecter**. « Écris null » est vérifiable ; « n'invente pas » ne l'est pas.
+
+**2. Les règles de désambiguïsation sont ce qui fait la différence.** Les quatre pièges de la facture A ont tous été déjoués par une règle explicite correspondante. Un prompt d'extraction sans ces règles aurait échoué sur la date d'échéance ou sur l'émetteur.
+
+**3. Une contrainte anti-invention mal bornée coûte de la complétude.** Le modèle n'a pas distingué *fabriquer* de *déduire*. Il faut donc énumérer les déductions autorisées, ce qui suppose de connaître à l'avance les cas limites du corpus.
+
+**4. En extraction, le silence vaut mieux que l'approximation.** Deux `null` en trop sont un moindre mal comparés à deux montants mal qualifiés.
