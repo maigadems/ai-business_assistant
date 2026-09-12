@@ -295,3 +295,109 @@ Le modèle mentionne les « valeurs extrêmes » pour justifier RMSE, mais n'en 
 **3. Une contrainte « sur ce dataset précisément » répétée à chaque rubrique évite le catalogue.** Les cinq modèles sont standards, mais leurs avantages et limites sont chiffrés sur le cas réel. C'est la différence entre une liste Wikipédia et un conseil.
 
 **4. Ce que le modèle voit, il ne le traite pas toujours.** L'asymétrie de la cible est mentionnée deux fois comme justification, jamais comme problème à traiter. **Signaler une caractéristique et en tirer une action sont deux choses distinctes** — il faut demander la seconde explicitement.
+
+---
+
+## 6.4 — Métriques de classification
+
+**Prompt :** voir [`prompts.md`](prompts.md#64--métriques-de-classification)
+
+![Résultat des métriques de classification](captures/04-metriques-classification.png)
+
+**Exemple fil rouge produit :** détection de fraude bancaire sur 1 000 transactions.
+
+|  | Réalité : fraude | Réalité : normale |
+|---|---:|---:|
+| **Prédit : fraude** | TP = 70 | FP = 30 |
+| **Prédit : normale** | FN = 30 | TN = 870 |
+| **Total** | 100 | 900 |
+
+### Vérification des calculs
+
+Tous les calculs ont été recalculés indépendamment :
+
+| Métrique | Formule appliquée | Valeur calculée | Annoncée | ✓ |
+|---|---|---|---|---|
+| Accuracy | (70+870)/1000 | 0,9400 | 0,94 | ✅ |
+| Precision | 70/(70+30) | 0,7000 | 0,70 | ✅ |
+| Recall | 70/(70+30) | 0,7000 | 0,70 | ✅ |
+| F1 | 2×0,7×0,7/(0,7+0,7) | 0,7000 | 0,70 | ✅ |
+| FPR | 30/(30+870) | 0,0333 | 3,33 % | ✅ |
+
+**Contre-exemples :**
+
+| Cas | Calcul | Annoncé | ✓ |
+|---|---|---|---|
+| Toujours « normale » | 900/1000 = 0,90 | 90 % | ✅ |
+| Conservateur (TP=9, FP=1) | Precision = 0,90 | 90 % | ✅ |
+| Tout positif (TP=100, FP=900) | Recall = 1,00 | 100 % | ✅ |
+| **F1 avec P=0,9 et R=0,1** | **2×0,9×0,1/1,0 = 0,1800** | **16,4 %** | ❌ |
+
+### L'erreur détectée
+
+Un seul calcul est faux, dans l'illustration de la moyenne harmonique :
+
+> « Precision = 90 %, Recall = 10 % donne : **F1 ≈ 16,4 %** »
+
+La valeur exacte est **18,0 %** :
+
+```
+F1 = 2 × (0,9 × 0,1) / (0,9 + 0,1) = 2 × 0,09 / 1,0 = 0,18
+```
+
+**L'erreur est mineure sur le fond** — 16,4 % ou 18 %, la démonstration reste valide : le F1 s'effondre quand une des deux composantes est faible, contrairement à une moyenne arithmétique qui donnerait 50 %.
+
+**Mais elle est significative sur la forme.** C'est exactement le risque annoncé dans l'[hypothèse du prompt](prompts.md#64--métriques-de-classification) : sur un sujet très documenté, le modèle produit une réponse fluide et pédagogiquement solide **contenant une erreur de calcul qu'un lecteur non vigilant reprendra telle quelle**. Les cinq calculs principaux étaient exacts ; c'est le sixième, présenté en passant, qui dérape.
+
+Un enseignement opérationnel : **toute valeur numérique produite par un LLM dans un contenu pédagogique doit être recalculée**, même quand les calculs voisins sont justes.
+
+### Les trois pièges anticipés sont évités
+
+| Piège | Traitement dans la réponse |
+|---|---|
+| Confusion Precision / Recall | ✅ Formules correctes et distinctes, chacune introduite par la question à laquelle elle répond |
+| Accuracy présentée comme fiable | ✅ Contre-exemple chiffré : 90 % d'Accuracy pour 0 % de fraudes détectées |
+| ROC-AUC sur données déséquilibrées | ✅ **PR-AUC explicitement recommandée** |
+
+Le premier piège est bien désamorcé par un procédé pédagogique efficace : chaque métrique est introduite par sa **question métier** avant sa formule.
+
+> Precision : « Parmi les transactions que le modèle a déclarées frauduleuses, combien le sont réellement ? »
+> Recall : « Parmi toutes les transactions réellement frauduleuses, combien le modèle réussit-il à détecter ? »
+
+Cette formulation rend la confusion structurellement difficile : le dénominateur découle de la question posée.
+
+Le troisième piège est celui que la plupart des présentations manquent. La réponse le traite correctement :
+
+> « Elle peut être particulièrement trompeuse avec des classes fortement déséquilibrées [...] il est souvent intéressant de regarder également la **Precision-Recall curve et la PR-AUC**. »
+
+### La contrainte « où s'y fier seule serait une erreur » a produit cinq contre-exemples chiffrés
+
+C'est la contrainte la plus productive du prompt. Chaque métrique est accompagnée d'un cas de défaillance construit :
+
+| Métrique | Contre-exemple |
+|---|---|
+| Accuracy | Prédire toujours « normale » → 90 %, 0 fraude détectée |
+| Precision | Ne signaler que 10 transactions → 90 %, 91 % des fraudes ratées |
+| Recall | Tout déclarer positif → 100 %, 900 fausses alertes |
+| F1 | Équilibre imposé alors que FN et FP ont des coûts différents |
+| ROC-AUC | Bon classement global, inexploitable au seuil réellement utilisé |
+
+Ces contre-exemples ne sont pas décoratifs : ils sont **calculés sur des matrices de confusion cohérentes** avec l'exemple fil rouge. La contrainte « même exemple fil rouge » a permis cette continuité.
+
+### Une limite du cadrage
+
+Le prompt exigeait « un cas déséquilibré, où la classe positive est minoritaire ». Le modèle a produit un déséquilibre de **10 %** (100 fraudes sur 1 000).
+
+C'est effectivement minoritaire, mais **modéré**. Dans la détection de fraude réelle, le taux est plutôt de 0,1 % à 1 %. Avec 10 %, l'Accuracy du modèle trivial atteint 90 % — déjà démonstratif, mais moins spectaculaire qu'avec 2 % de positifs, où elle atteindrait 98 %.
+
+La contrainte aurait gagné à être chiffrée : *« la classe positive représente au maximum 2 % des observations »*. C'est la même leçon qu'en 6.2 : **une contrainte qualitative laisse au modèle le choix du degré**.
+
+### Ce que cette tâche établit
+
+**1. Sur un sujet très documenté, la fluidité masque les erreurs de calcul.** La réponse est pédagogiquement excellente — structure, formules correctes, contre-exemples pertinents, PR-AUC mentionnée. Et elle contient une valeur fausse. **La qualité rédactionnelle n'est pas un indicateur de l'exactitude numérique.**
+
+**2. Introduire une métrique par sa question métier prévient la confusion Precision/Recall.** Le procédé mérite d'être repris dans tout prompt pédagogique sur ce sujet.
+
+**3. Exiger un cas de défaillance par élément est très productif.** Cinq contre-exemples chiffrés et cohérents, là où une demande d'« explication » aurait produit cinq définitions.
+
+**4. Une contrainte qualitative sur un ordre de grandeur doit être chiffrée.** « Cas déséquilibré » a donné 10 % ; « au maximum 2 % » aurait donné une démonstration plus nette.
