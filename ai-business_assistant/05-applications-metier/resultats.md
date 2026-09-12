@@ -86,3 +86,81 @@ Correction possible : ajouter un quatrième intertitre « Difficultés », ou é
 **2. Une contrainte anti-complaisance est nécessaire et suffisante.** L'instruction « ne présente pas un résultat partiel comme un succès » a produit deux mentions explicites de non-atteinte. C'est le même mécanisme que « cause non précisée dans les avis » en Partie 3 : **une formule à produire bat une interdiction abstraite.**
 
 **3. La structure imposée détermine ce qui survit.** Tout ce qui n'entrait pas dans les trois rubriques a disparu. Choisir les intertitres d'un résumé, c'est choisir ce que le lecteur ne lira pas.
+
+---
+
+## 5.2 — Traduction français → anglais
+
+**Prompt :** voir [`prompts.md`](prompts.md#52--traduction-français--anglais)
+**Source :** section 3.2 du [rapport trimestriel](../data/rapport-trimestriel.md)
+
+![Résultat de la traduction](captures/02-traduction.png)
+
+**Réponse obtenue (intégrale) :**
+
+> ### 3.2 First Contact Resolution
+>
+> The first contact resolution rate reached **68%**, compared with 61% in the previous quarter. The target of 75% was not achieved.
+>
+> The analysis by contact reason reveals a significant gap:
+>
+> | Reason | Resolution rate |
+> |---|---|
+> | Order tracking | 89% |
+> | Return and refund | 72% |
+> | Mobile application technical issue | 34% |
+> | Product question | 81% |
+>
+> Technical issues related to the mobile application are the main obstacle. They account for 22% of contacts and almost always require escalation to the technical team, whose average processing time is four business days.
+
+**Observations :**
+
+| Critère | Constat |
+|---|---|
+| Structure conservée | ✅ titre, 2 paragraphes, tableau 4 lignes, paragraphe final |
+| Aucun commentaire ajouté | ✅ ni préambule, ni note du traducteur |
+| Chiffres à l'identique | ✅ 68, 61, 75, 89, 72, 34, 81, 22, quatre |
+| Format adapté | ✅ `68 %` → `68%` (convention anglaise, sans espace) |
+| Termes consacrés | ✅ voir ci-dessous |
+| Aucune phrase omise | ✅ correspondance phrase à phrase |
+| Ajout d'information | ⚠️ une déviation, voir ci-dessous |
+
+### Les termes métier sont correctement rendus
+
+C'est le point le plus délicat de la tâche, et il est réussi :
+
+| Français | Traduction produite | Commentaire |
+|---|---|---|
+| taux de résolution au premier contact | **first contact resolution rate** | ✅ terme consacré (FCR), pas une traduction littérale |
+| motif de contact | **contact reason** | ✅ usage courant en centre de relation client |
+| escalade vers l'équipe technique | **escalation to the technical team** | ✅ terme consacré |
+| jours ouvrés | **business days** | ✅ correct — *working days* aurait été acceptable, *open days* aurait été une faute |
+| délai de traitement moyen | **average processing time** | ✅ |
+| suivi de commande | **order tracking** | ✅ |
+| retour et remboursement | **return and refund** | ✅ |
+
+Une traduction littérale aurait produit *« rate of resolution at the first contact »* — compréhensible mais non idiomatique. Le modèle a mobilisé le vocabulaire métier anglophone, ce que la contrainte « équivalent anglais consacré » demandait explicitement.
+
+Le titre de section a également été adapté : « Résolution au premier contact » → « First Contact Resolution », avec les majuscules de titre anglaises. C'est une adaptation de convention, pas une modification de sens.
+
+### La déviation : une explicitation dans le tableau
+
+| Français | Anglais |
+|---|---|
+| Problème technique application | Mobile **application** technical issue |
+
+Le français dit « Problème technique application » — l'adjectif *mobile* n'y figure pas. Le modèle l'a ajouté.
+
+**L'ajout est factuellement correct** : le paragraphe suivant précise bien qu'il s'agit de l'application mobile. Le modèle a donc utilisé le contexte pour lever une ellipse.
+
+**Mais il enfreint la contrainte** « n'ajoute aucune information ». Dans un tableau de reporting, cette ligne est un libellé d'indicateur : si ce libellé sert de clé de rapprochement avec un système source, l'ajout casse la correspondance.
+
+C'est exactement le comportement que les quatre contraintes visaient — **la tentation d'améliorer**. Le modèle a produit un texte *meilleur* que le source, et c'est précisément ce qu'on ne voulait pas.
+
+### Ce que cette tâche établit
+
+**1. La contrainte de non-ajout est la plus difficile à tenir.** Les contraintes de structure, de chiffres et de non-résumé ont été respectées intégralement. La seule déviation porte sur l'ajout — et elle est *bien intentionnée*, ce qui la rend difficile à détecter en relecture rapide.
+
+**2. Une ellipse du texte source est un point de fragilité.** Partout où le français est elliptique, le modèle est tenté de compléter. Pour une traduction strictement fidèle, il faudrait une contrainte plus spécifique : *« si le texte source est elliptique, conserve l'ellipse ; ne complète pas depuis le contexte. »*
+
+**3. La qualité terminologique justifie l'usage d'un LLM plutôt qu'une traduction automatique classique.** Le passage de « taux de résolution au premier contact » à *first contact resolution rate* suppose de reconnaître un concept métier, pas seulement de traduire des mots. C'est le gain réel sur cette tâche.
