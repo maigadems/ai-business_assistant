@@ -164,3 +164,86 @@ C'est exactement le comportement que les quatre contraintes visaient — **la te
 **2. Une ellipse du texte source est un point de fragilité.** Partout où le français est elliptique, le modèle est tenté de compléter. Pour une traduction strictement fidèle, il faudrait une contrainte plus spécifique : *« si le texte source est elliptique, conserve l'ellipse ; ne complète pas depuis le contexte. »*
 
 **3. La qualité terminologique justifie l'usage d'un LLM plutôt qu'une traduction automatique classique.** Le passage de « taux de résolution au premier contact » à *first contact resolution rate* suppose de reconnaître un concept métier, pas seulement de traduire des mots. C'est le gain réel sur cette tâche.
+
+---
+
+## 5.3 — Classification de ticket informatique
+
+**Prompt :** voir [`prompts.md`](prompts.md#53--classification-de-ticket-informatique)
+
+![Résultat de la classification](captures/03-ticket.png)
+
+**Réponse obtenue (intégrale) :**
+
+```json
+{
+  "categorie": "acces",
+  "justification": "Le ticket indique « Échec de l'authentification, vérifiez vos identifiants », ce qui motive un classement dans la catégorie accès."
+}
+```
+
+**Observations :**
+
+| Critère | Constat |
+|---|---|
+| JSON valide | ✅ parsable, aucun bloc de code |
+| Exactement 2 champs | ✅ |
+| Catégorie dans le domaine | ✅ `acces` |
+| **Catégorie correcte** | ✅ c'est le bon arbitrage |
+| Justification citant le ticket | ✅ citation exacte |
+| **Qualité de la justification** | ⚠️ cite le symptôme, pas l'indice discriminant |
+
+### La règle de décision a fonctionné
+
+Le ticket contenait trois pistes contradictoires, dont deux fausses :
+
+| Indice du ticket | Catégorie suggérée | Verdict |
+|---|---|---|
+| « serveur de fichiers partagés » | `reseau` | ❌ leurre |
+| « j'ai redémarré mon poste deux fois » | `materiel` | ❌ leurre |
+| « Échec de l'authentification » | `acces` | ✅ correct |
+
+Le modèle a retenu `acces`, soit l'arbitrage attendu. La mention d'un **serveur** en première phrase était le leurre le plus fort — c'est le mot le plus saillant du ticket, et un tri par mots-clés aurait classé en `reseau`.
+
+**La règle « classe selon la cause probable, pas selon le symptôme » a donc produit l'effet voulu**, et confirme ce que la Partie 2 avait établi : une règle de décision explicite bat des exemples pour trancher les cas limites.
+
+### La faiblesse : la justification manque l'argument décisif
+
+C'est le point intéressant de ce résultat. Le modèle justifie par :
+
+> « Échec de l'authentification, vérifiez vos identifiants »
+
+C'est exact, mais c'est **le symptôme affiché**, pas la preuve. Un échec d'authentification peut avoir une cause réseau (serveur d'annuaire injoignable), logicielle (client mal configuré) ou d'accès (compte expiré).
+
+L'indice réellement discriminant est ailleurs :
+
+> « Mon collègue du même bureau y accède sans problème. »
+
+Cette phrase élimine à elle seule le réseau (même segment local), le serveur (disponible) et le poste comme cause partagée. Elle établit que **le problème est individuel** — donc lié au compte. C'est l'argument qui rend le classement `acces` démontrable plutôt que probable.
+
+**Le modèle a probablement utilisé cet indice pour décider — mais il ne l'a pas cité.** La justification produite reste valable pour un humain qui relit, mais elle est plus faible que le raisonnement qui l'a produite.
+
+### Pourquoi cette faiblesse était prévisible
+
+La contrainte disait : *« la justification cite un élément effectivement présent dans le ticket »*. Elle exige une **citation**, pas une **démonstration**. Le modèle a satisfait la lettre de la consigne.
+
+Correction possible :
+
+```text
+- la justification doit expliquer pourquoi les autres catégories plausibles
+  ont été écartées, en citant l'élément du ticket qui les élimine
+```
+
+C'est une application directe de ce qu'a montré la Partie 4 avec le champ `confiance` : **contraindre la forme d'un champ ne garantit pas qu'il porte l'information utile**. Ici la justification est bien formée, bien citée — et pourtant elle n'expose pas l'arbitrage réel.
+
+### Le champ `justification` reste un champ libre
+
+Conformément à ce qu'établit la [Partie 4](../04-sorties-structurees/resultats.md), ce champ ne doit jamais servir de clé de filtrage ou d'agrégation : sa formulation varie d'une exécution à l'autre. Sa fonction est **de rendre l'arbitrage contestable par un humain** — ce qui suppose, précisément, qu'il expose l'arbitrage.
+
+### Ce que cette tâche établit
+
+**1. Une règle de décision explicite résiste aux leurres lexicaux.** Le mot « serveur » n'a pas déclenché un classement `reseau`. Une classification par mots-clés aurait échoué.
+
+**2. Une bonne décision peut s'accompagner d'une mauvaise justification.** Les deux se contraignent séparément. Un système qui ne vérifierait que la catégorie validerait ce résultat ; un audit humain de la justification passerait à côté de l'argument décisif.
+
+**3. Demander « cite un élément » n'est pas demander « démontre ».** La formulation d'une contrainte détermine précisément ce qu'on obtient — ni plus, ni moins.
