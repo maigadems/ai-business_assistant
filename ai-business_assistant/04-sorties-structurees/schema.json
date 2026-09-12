@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Analyse d'un avis client",
+  "description": "Traduction exécutable des cinq règles de sortie de la Partie 4. Les règles énoncées dans un prompt restent déclaratives : ce schéma permet de les vérifier côté application et de rejeter une sortie non conforme.",
+  "type": "object",
+  "properties": {
+    "sentiment": {
+      "description": "Règle 3 : sentiment vaut positif, negatif ou neutre — aucune nuance.",
+      "type": "string",
+      "enum": ["positif", "negatif", "neutre"]
+    },
+    "categorie": {
+      "description": "Domaine concerné par l'avis.",
+      "type": "string",
+      "enum": ["livraison", "application", "prix", "sav", "produit", "autre"]
+    },
+    "urgence": {
+      "description": "Règle 5 : urgence vaut faible, moyenne ou elevee.",
+      "type": "string",
+      "enum": ["faible", "moyenne", "elevee"]
+    },
+    "probleme": {
+      "description": "Seul champ libre du schéma. Non reproductible d'une exécution à l'autre : ne jamais l'utiliser comme clé de filtrage ou de regroupement.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "confiance": {
+      "description": "Règle 4 : nombre décimal entre 0 et 1 inclus. ATTENTION — le domaine est contraint, pas la sémantique : les tests de la Partie 4 montrent une valeur constante à 0.99 y compris sur un avis ambigu. Ne pas s'en servir comme seuil de confiance sans avoir ajouté au prompt une règle liant explicitement cette valeur à l'ambiguïté du commentaire.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "required": ["sentiment", "categorie", "urgence", "probleme", "confiance"],
+  "additionalProperties": false
+}
