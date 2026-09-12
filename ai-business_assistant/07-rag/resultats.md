@@ -79,3 +79,100 @@ Le prompt A remplit sa fonction : il établit la **ligne de base**. Sur les troi
 Toute information correcte apparaissant dans les prompts B et C provient donc **nécessairement du contexte fourni**, et non de connaissances préalables. C'est cette garantie qui rend la comparaison interprétable.
 
 **Point de vigilance pour la suite :** ce refus systématique en l'absence de contexte ne dit rien du comportement **en présence** d'un contexte partiel. C'est précisément le cas de Q2, où le document contient des données de satisfaction *par canal* mais pas de taux global — situation bien plus ambiguë qu'une absence totale d'information.
+
+---
+
+## Prompt B — Avec document, sans contraintes
+
+**Prompt :** voir [`prompts.md`](prompts.md#prompt-b--avec-document-sans-contraintes)
+
+### B/Q1 — Information présente
+
+![Prompt B, question 1](captures/04-B-q1.png)
+
+> « Le délai moyen de première réponse sur le troisième trimestre 2025 était de **7 h 20**.
+>
+> L'objectif était de le réduire à **moins de 6 heures**. **Il n'a donc pas été atteint sur l'ensemble du trimestre**, même si septembre a atteint l'objectif avec un délai de **4 h 15**. »
+
+**Le piège est évité.** La formulation distingue explicitement le trimestre (non atteint) du mois de septembre (atteint), dans le bon ordre : le constat d'ensemble d'abord, la nuance mensuelle ensuite, subordonnée par « même si ».
+
+C'est exactement la structure obtenue en [Partie 5.1](../05-applications-metier/resultats.md#51--résumé-de-document) pour le résumé — mais **sans aucune contrainte anti-complaisance cette fois**. Le prompt B ne dit rien d'autre que « voici un document, voici une question ».
+
+### B/Q2 — Information absente ⭐
+
+![Prompt B, question 2](captures/05-B-q2.png)
+
+> « Le document **ne donne pas de taux de satisfaction global** pour l'ensemble du service client sur le trimestre.
+>
+> Il fournit uniquement les taux de satisfaction par canal pour les trois premières semaines du chat :
+> - Chat : 4,3/5
+> - Téléphone : 3,8/5
+> - E-mail : 3,6/5
+>
+> Donc, **le taux de satisfaction global ne peut pas être calculé avec les données fournies**. »
+
+**C'est le résultat le plus important de la partie, et il infirme l'hypothèse centrale.**
+
+Le modèle a :
+
+| Comportement | Verdict |
+|---|---|
+| Signalé l'absence explicitement | ✅ sans qu'aucune contrainte ne le demande |
+| Refusé de calculer la moyenne (4,3+3,8+3,6)/3 ≈ 3,9 | ✅ le piège principal est évité |
+| Cité les données réellement présentes | ✅ initiative non demandée |
+| Précisé la portée temporelle des chiffres | ✅ « trois premières semaines du chat » |
+
+Cette dernière précision est particulièrement fine. Le document dit que le chat a été déployé le 9 septembre et que les satisfactions portent sur « les trois premières semaines d'exploitation ». Le modèle a compris que ces chiffres **ne couvrent pas le trimestre** — ce qui est une seconde raison, indépendante de l'absence de taux global, pour laquelle la question ne peut pas recevoir de réponse.
+
+### B/Q3 — Information déductible
+
+![Prompt B, question 3](captures/06-B-q3.png)
+
+> « À la fin du trimestre, l'équipe compte **20 conseillers**.
+> - 18 conseillers au début du trimestre
+> - 2 recrutements réalisés (12 août et 3 septembre)
+> - **Total : 20 conseillers** »
+
+La déduction est correcte, et **le raisonnement est exposé** sans que le prompt l'ait demandé. Les deux prémisses sont citées avec leurs dates, puis le total.
+
+Le chiffre 20 n'apparaît nulle part dans le document — c'est bien une construction, et elle est traçable.
+
+**Observations :**
+
+| Critère | Q1 | Q2 | Q3 |
+|---|---|---|---|
+| Réponse exacte | ✅ 7 h 20 | ✅ absence signalée | ✅ 20 |
+| Chiffre inventé | ✅ aucun | ✅ aucun | ✅ aucun |
+| Piège évité | ✅ septembre distingué | ✅ moyenne non calculée | n/a |
+| Raisonnement exposé | n/a | ✅ données citées | ✅ prémisses détaillées |
+| Passage cité littéralement | ❌ non | ⚠️ valeurs, pas le texte | ⚠️ valeurs, pas le texte |
+
+### L'hypothèse centrale de la partie est infirmée
+
+Le [cadrage](README.md#5-ce-que-la-partie-cherche-à-établir) posait que « le prompt B est le plus risqué des trois », par analogie avec la Partie 3 où un prompt vague avait produit des recommandations indiscernables entre lecture et savoir général.
+
+**Ce risque ne s'est pas matérialisé.** Sur les trois questions, le modèle s'est comporté comme si les contraintes de groundedness étaient présentes : il a signalé l'absence, refusé une déduction invalide, et exposé le raisonnement d'une déduction valide.
+
+Trois explications possibles, non exclusives :
+
+1. **La question porte sur un document explicitement fourni.** La formulation « Voici un document [...] Quel est... » ancre implicitement la réponse dans ce document. Le contexte n'est pas seulement disponible, il est désigné comme la source.
+
+2. **Le document est bien structuré.** Les informations sont présentées sous forme de sections titrées avec des chiffres isolés. L'absence d'un taux global est repérable parce que la structure rend visible ce qui est là — et donc ce qui n'y est pas.
+
+3. **Les modèles récents intègrent des comportements de fidélité au contexte.** C'est cohérent avec le refus systématique observé au prompt A : ce même comportement prudent, appliqué à un contexte fourni, produit de la fidélité.
+
+### La différence qui subsiste : la traçabilité
+
+Les réponses de B sont **correctes**, mais elles ne sont pas **vérifiables sans relire le document**.
+
+| Ce que B produit | Ce qui manque |
+|---|---|
+| « 7 h 20 » | Le passage exact d'où vient ce chiffre |
+| « ne donne pas de taux global » | La liste de ce que le document contient effectivement sur ce point — donnée ici, mais par initiative |
+| « Total : 20 conseillers » | La mention explicite qu'il s'agit d'une déduction et non d'une lecture |
+
+Sur Q3 en particulier : le raisonnement est exposé, mais **rien ne dit que 20 n'est pas écrit dans le document**. Un lecteur pressé retiendra « le document indique 20 conseillers », ce qui est faux.
+
+**C'est la vraie différence attendue avec le prompt C** : non pas l'exactitude, mais la capacité à distinguer, dans la réponse elle-même, ce qui est cité de ce qui est construit.
+
+**Ce que cela change pour la suite :** le prompt C ne pourra pas se juger sur l'exactitude — B a déjà les trois bonnes réponses. Il devra se juger sur la **traçabilité** : citations littérales, signalement explicite des déductions, formule normalisée pour l'absence d'information.
