@@ -196,3 +196,102 @@ C'est une illustration de la **perte de contexte entre conversations** : la ques
 **3. Une consigne binaire mal formulée produit une réponse déséquilibrée.** « Indique si c'est avant ou après » invitait à classer, pas à couvrir les deux cas. Pour obtenir une répartition, il faut l'exiger — comme pour le nombre de visualisations, qui était borné explicitement et a été respecté.
 
 **4. L'isolement des conversations a un coût.** Le protocole « une conversation neuve par prompt » garantit l'indépendance des tests, mais prive chaque réponse des conclusions des précédentes. C'est méthodologiquement nécessaire ici, et contre-productif en usage réel.
+
+---
+
+## 6.3 — Modèles de prédiction
+
+**Prompt :** voir [`prompts.md`](prompts.md#63--modèles-de-prédiction)
+
+![Résultat des modèles](captures/03-modeles.png)
+
+**Réponse obtenue :** cinq modèles, chacun en cinq points (principe, avantages, limites, type de problème, métriques) plus un prétraitement, suivis d'une section dédiée à la construction du jeu de test et d'une recommandation finale.
+
+| # | Modèle | Rôle |
+|---|---|---|
+| 1 | Régression linéaire | **Baseline** explicitement nommé |
+| 2 | Random Forest Regressor | Non-linéaire, interactions |
+| 3 | XGBoost / Gradient Boosting | **Candidat principal retenu** |
+| 4 | SARIMAX | Série temporelle + exogènes |
+| 5 | LSTM | Séquentiel profond |
+
+### Point décisif n° 1 : le split temporel est correct
+
+C'était le test principal de la question. La contrainte disait seulement « en tenant compte de la nature des données », sans souffler la réponse. Le modèle a produit exactement ce qu'il fallait :
+
+> « Il ne faut surtout **pas faire un `train_test_split` aléatoire**, car cela mélangerait passé et futur et créerait une **fuite temporelle**. »
+
+Et il propose un découpage chronologique chiffré :
+
+| Ensemble | Période | Rôle |
+|---|---|---|
+| Train | 1er janvier → 15 mars | apprentissage |
+| Validation | 16 → 23 mars | hyperparamètres |
+| Test | 24 → 31 mars | évaluation finale |
+
+Avec la règle générale correctement énoncée — « le jeu de test doit contenir uniquement des observations **postérieures** aux données d'entraînement » — et la mention de la **validation walk-forward / `TimeSeriesSplit`** pour les modèles temporels.
+
+**Le risque annoncé dans le [cadrage](README.md#1-ce-qui-change-dans-cette-partie) — le conseil plausible mais inadapté — ne s'est pas matérialisé.** Une validation croisée classique aurait été la réponse « par défaut » sur un dataset tabulaire ; le modèle a identifié que la structure horaire l'interdit.
+
+### Point décisif n° 2 : cohérence type de problème ↔ métriques
+
+La réponse s'ouvre par la qualification du problème :
+
+> « régression supervisée sur données temporelles, avec une cible numérique continue `consommation_kwh` »
+
+Et **aucune métrique de classification n'apparaît** dans les cinq modèles. Les métriques citées sont MAE, RMSE, R², plus MAPE pour les deux modèles temporels — avec à chaque fois la même réserve :
+
+> « **MAPE**, avec prudence : elle devient problématique lorsque la consommation est nulle ou proche de zéro. »
+
+Cette réserve est fondée sur le profil : `consommation_kwh` a un minimum négatif et un premier quartile à 10,29, donc des valeurs proches de zéro existent. MAPE y diverge. **Le modèle a relié une limite mathématique connue à une caractéristique observée du dataset** — exactement le type d'ancrage que le prompt exigeait.
+
+Il justifie aussi le choix RMSE par le dataset :
+
+> « RMSE : pénalise davantage les grosses erreurs, particulièrement important ici puisque la consommation atteint des **valeurs extrêmes**. »
+
+### Les limites sont spécifiques, pas génériques
+
+La contrainte « limites **sur ce dataset précisément** » a produit son effet. Trois exemples :
+
+| Modèle | Limite citée | Ancrage |
+|---|---|---|
+| Random Forest | « avec seulement **90 jours**, difficultés à généraliser certains comportements saisonniers » | ✅ durée réelle du dataset |
+| SARIMAX | « les **multiples zones** compliquent un SARIMAX unique : il faudrait travailler par zone » | ✅ structure à 5 zones |
+| LSTM | « **11 070 lignes sur 90 jours** constituent un volume assez limité pour un réseau profond » | ✅ volume réel |
+
+La limite du LSTM est la plus utile : le modèle recommande explicitement de **ne pas** partir sur du deep learning, en justifiant par le volume et en notant qu'« un XGBoost bien construit peut facilement être plus performant sur ce type de dataset tabulaire ». C'est un conseil de sobriété, pas une énumération de tout ce qui existe.
+
+### Le feature engineering temporel est proposé spontanément
+
+Le prompt ne demandait pas de variables dérivées. Le modèle en propose à plusieurs reprises :
+
+- extraction depuis `horodatage` : heure, jour de la semaine, mois ;
+- variables retardées explicites : `consommation_lag_1h`, `consommation_lag_24h`, `consommation_lag_168h`.
+
+Les trois retards choisis correspondent aux trois saisonnalités attendues d'un bâtiment tertiaire : heure précédente, même heure la veille, même heure la semaine précédente. **C'est une proposition experte, non demandée**, et cohérente avec la limite qu'il identifie pour les modèles d'arbres (« ne comprend pas intrinsèquement la notion d'ordre temporel »).
+
+### La cible manquante est de nouveau correctement traitée
+
+Sans que le prompt le demande, le modèle consacre une section aux 188 valeurs manquantes de la cible :
+
+> « ces lignes ne peuvent pas servir directement à entraîner ou évaluer le modèle »
+
+C'est cohérent avec la réponse de la question 6.1, obtenue dans une conversation distincte. **La convergence entre deux sessions indépendantes suggère que le profil du dataset porte suffisamment d'information pour que ce raisonnement soit reproductible.**
+
+### Deux limites
+
+**1. L'asymétrie de la cible n'est pas exploitée.** Le profil donne moyenne 27,27, médiane 13,06, écart-type 71,73, max 898,52 — soit une distribution fortement asymétrique à queue longue. Aucun des cinq modèles ne propose de **transformation logarithmique de la cible**, alors que c'est un traitement standard dans ce cas et qu'il change significativement le comportement de RMSE.
+
+Le modèle mentionne les « valeurs extrêmes » pour justifier RMSE, mais n'en tire pas la conséquence en amont : faut-il apprendre sur `log(consommation)` ? C'est la même information que la question 6.2 avait laissée de côté — l'asymétrie est vue, jamais traitée.
+
+**2. R² est proposé sans réserve.** Sur une série temporelle, R² se compare mal entre périodes de variance différente, et un R² élevé peut masquer un modèle qui ne fait que reproduire la saisonnalité. Un baseline de persistance (« prédire la valeur de l'heure précédente ») aurait été un point de comparaison plus exigeant que la régression linéaire proposée.
+
+### Ce que cette tâche établit
+
+**1. Le risque principal de la partie 6 ne s'est pas matérialisé.** Le conseil inadapté attendu — validation croisée aléatoire sur série temporelle — a été explicitement écarté. Sur ce dataset, le profil fourni contenait assez d'indices (horodatage horaire, 90 jours) pour que le modèle infère la contrainte méthodologique.
+
+**2. Exiger de qualifier le problème avant de citer les métriques a produit la cohérence voulue.** Aucune métrique de classification n'apparaît. La séquence imposée dans le prompt — type de problème d'abord, métriques ensuite — semble avoir joué le rôle d'une vérification interne.
+
+**3. Une contrainte « sur ce dataset précisément » répétée à chaque rubrique évite le catalogue.** Les cinq modèles sont standards, mais leurs avantages et limites sont chiffrés sur le cas réel. C'est la différence entre une liste Wikipédia et un conseil.
+
+**4. Ce que le modèle voit, il ne le traite pas toujours.** L'asymétrie de la cible est mentionnée deux fois comme justification, jamais comme problème à traiter. **Signaler une caractéristique et en tirer une action sont deux choses distinctes** — il faut demander la seconde explicitement.
