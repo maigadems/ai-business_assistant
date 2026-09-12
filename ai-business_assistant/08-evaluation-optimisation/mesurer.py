@@ -48,14 +48,21 @@ NOMBRES_SOURCE = {
 
 def normaliser(texte):
     """Minuscules, accents retirés, espaces insécables normalisés."""
+    texte = retirer_commentaires(texte)
     texte = texte.replace(" ", " ").replace(" ", " ")
     texte = unicodedata.normalize("NFD", texte)
     texte = "".join(c for c in texte if unicodedata.category(c) != "Mn")
     return texte.lower()
 
 
+def retirer_commentaires(texte):
+    """Retire les commentaires HTML (gabarit des fichiers de réponse)."""
+    return re.sub(r"<!--.*?-->", " ", texte, flags=re.DOTALL)
+
+
 def compter_mots(texte):
     """Compte les mots, en ignorant le balisage markdown."""
+    texte = retirer_commentaires(texte)
     texte = re.sub(r"[#*_>`|\-]", " ", texte)
     return len([m for m in texte.split() if any(c.isalnum() for c in m)])
 
