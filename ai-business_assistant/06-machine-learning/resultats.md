@@ -100,3 +100,99 @@ Le quatrième usage est le plus fin : le modèle constate qu'un `describe()` ne 
 **3. Le raisonnement sur la cohérence interne du profil est le point fort.** Comparer moyenne et quartiles pour détecter une sentinelle, ou comparer deux compteurs de doublons pour déduire des quasi-doublons, ne s'obtient pas par application de recettes. C'est ce qui distingue ici un conseil expert d'un catalogue.
 
 **4. Le risque « conseil plausible mais inadapté » ne s'est pas matérialisé sur cette tâche** — mais il reste entier sur les questions 6.2 et 6.3, où il n'existe pas de grille de correction objective.
+
+---
+
+## 6.2 — Visualisations pertinentes
+
+**Prompt :** voir [`prompts.md`](prompts.md#62--visualisations-pertinentes)
+
+![Résultat des visualisations](captures/02-visualisations.png)
+
+**Réponse obtenue :** sept visualisations, chacune en cinq points (type, variables, objectif, interprétation, justification), plus un tableau de classement final et une remarque de synthèse sur la lisibilité.
+
+| Rang | Visualisation | Type | Moment |
+|---|---|---|---|
+| 1 | Série temporelle de la consommation | line plot | après nettoyage |
+| 2 | Profil horaire par `type_jour` | line plot + bande IQR | après nettoyage |
+| 3 | `occupation_personnes` → consommation | scatter avec transparence | après nettoyage |
+| 4 | Distribution par `zone` | boxplot | après **normalisation** |
+| 5 | `temperature_interieure_c` → consommation | scatter + tendance | après nettoyage |
+| 6 | Matrice de corrélation | heatmap | après nettoyage |
+| 7 | `type_jour` × `zone` | grouped boxplot | après nettoyage |
+
+**Observations :**
+
+| Critère | Constat |
+|---|---|
+| Nombre | ✅ 7, dans la fourchette 5-8 |
+| Classement par utilité | ✅ explicite, avec tableau récapitulatif |
+| Colonnes existantes uniquement | ✅ aucune colonne inventée |
+| Justification par le dataset | ✅ chaque visualisation cite un chiffre du profil |
+| Avant / après nettoyage | ⚠️ les 7 sont « après » — voir ci-dessous |
+| Lisibilité à 11 070 points | ✅ traitée explicitement |
+
+### Les trois caractéristiques du dataset sont exploitées
+
+| Caractéristique | Exploitation |
+|---|---|
+| Série horaire sur 90 jours | ✅ visualisations 1 et 2 — série temporelle **et** profil horaire agrégé, deux lectures distinctes du temps |
+| 5 zones | ✅ visualisations 4 et 7, avec la condition « après normalisation » rappelée |
+| Cible asymétrique | ⚠️ partiellement — voir la limite ci-dessous |
+
+La visualisation n° 2 est la plus fine : un **profil horaire moyen avec bande interquartile**, croisé par `type_jour`. Elle agrège les 11 070 points en 24 positions horaires, ce qui résout à la fois le problème de volume et la question métier (« le bâtiment consomme-t-il différemment le weekend ? »).
+
+La n° 7 va plus loin en cherchant une **interaction** `zone` × `type_jour` — hypothèse pertinente sur un bâtiment tertiaire, où la salle serveur consomme indépendamment de l'occupation alors que les bureaux non.
+
+### La contrainte de lisibilité a produit son effet
+
+Le prompt interdisait toute visualisation illisible à 11 070 points, sans dire laquelle. Le modèle a répondu deux fois :
+
+- en préambule : « j'éviterais les nuages de points bruts trop denses » ;
+- en conclusion : « je ne recommande pas de tracer les 11 070 observations sous forme de points **non transparents** ».
+
+Et il applique la règle : la visualisation n° 3 précise « scatter plot **avec transparence** ». La contrainte n'a donc pas seulement été acceptée, elle a modifié les spécifications proposées.
+
+### La limite principale : aucune visualisation « avant nettoyage »
+
+Le prompt demandait d'indiquer « explicitement si une visualisation doit être faite **avant ou après** le nettoyage ». Le modèle a répondu à la question pour chaque visualisation — mais les sept sont « après ».
+
+**C'est une lacune méthodologique réelle.** L'analyse exploratoire sert aussi à *valider le nettoyage*, et le profil contenait trois anomalies qui appelaient chacune une visualisation dédiée :
+
+| Anomalie | Visualisation manquante | Ce qu'elle montrerait |
+|---|---|---|
+| 62 valeurs à -999 | Histogramme brut de `temperature_interieure_c` | La bimodalité -999 / ~21 °C, preuve visuelle de la sentinelle |
+| `humidite_pct` > 100 % | Distribution brute avec ligne à 100 % | Combien de valeurs dépassent, et de combien |
+| Pics à 898 kWh | Distribution de la cible en échelle log | Si les extrêmes forment une queue continue ou un groupe isolé |
+
+Ce dernier point touche la troisième caractéristique du dataset : **l'asymétrie de la cible** (moyenne 27,3 / médiane 13,1 / max 898,5) n'a fait l'objet d'aucune visualisation dédiée. Or c'est l'information qui détermine s'il faut transformer la cible en log avant modélisation — décision majeure pour la question 6.3.
+
+**Origine probable :** le modèle a traité « avant ou après nettoyage » comme une **question de validité** (« ce graphique serait-il faussé par les anomalies ? ») plutôt que comme une **invitation à en proposer des deux sortes**. Les sept réponses sont correctes prises une à une ; c'est leur ensemble qui est déséquilibré.
+
+Correction du prompt :
+
+```text
+- propose au moins deux visualisations à réaliser AVANT nettoyage, destinées
+  à caractériser les anomalies elles-mêmes, et indique ce qu'elles doivent
+  montrer pour confirmer ou infirmer chaque hypothèse de nettoyage
+```
+
+### Une justification discutable
+
+Pour la visualisation n° 3, le modèle écrit :
+
+> « `occupation_personnes` varie de 0 à 22 et **ne présente pas de valeur manifestement aberrante** dans le profil. »
+
+C'est exact au regard du profil seul, mais incomplet : cette colonne a **527 valeurs manquantes (4,76 %)**, et la question 6.1 avait justement identifié que son imputation était délicate (variable de comptage à forte variation horaire). Une visualisation qui l'utilise en abscisse dépend donc d'un choix d'imputation non trivial — ce qui n'est pas signalé ici.
+
+C'est une illustration de la **perte de contexte entre conversations** : la question 6.1 a été traitée dans une session distincte, et ses conclusions ne sont pas disponibles ici. En usage réel, enchaîner les deux dans une même conversation — ou réinjecter les conclusions du nettoyage — améliorerait la cohérence.
+
+### Ce que cette tâche établit
+
+**1. Sans grille de correction objective, l'évaluation porte sur l'ancrage.** Aucune des sept visualisations n'est « fausse ». Ce qui les distingue d'un catalogue générique, c'est que chacune cite un chiffre du profil pour se justifier — 7 670 jours ouvrés, 11 modalités, écart-type de 77,3.
+
+**2. Une contrainte négative bien posée modifie les spécifications.** « Aucune visualisation illisible à 11 070 points » n'a pas seulement été respectée : elle a fait ajouter « avec transparence » et privilégier les formes agrégées.
+
+**3. Une consigne binaire mal formulée produit une réponse déséquilibrée.** « Indique si c'est avant ou après » invitait à classer, pas à couvrir les deux cas. Pour obtenir une répartition, il faut l'exiger — comme pour le nombre de visualisations, qui était borné explicitement et a été respecté.
+
+**4. L'isolement des conversations a un coût.** Le protocole « une conversation neuve par prompt » garantit l'indépendance des tests, mais prive chaque réponse des conclusions des précédentes. C'est méthodologiquement nécessaire ici, et contre-productif en usage réel.
