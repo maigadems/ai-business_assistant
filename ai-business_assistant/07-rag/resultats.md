@@ -176,3 +176,155 @@ Sur Q3 en particulier : le raisonnement est exposé, mais **rien ne dit que 20 n
 **C'est la vraie différence attendue avec le prompt C** : non pas l'exactitude, mais la capacité à distinguer, dans la réponse elle-même, ce qui est cité de ce qui est construit.
 
 **Ce que cela change pour la suite :** le prompt C ne pourra pas se juger sur l'exactitude — B a déjà les trois bonnes réponses. Il devra se juger sur la **traçabilité** : citations littérales, signalement explicite des déductions, formule normalisée pour l'absence d'information.
+
+---
+
+## Prompt C — Avec document et contraintes de groundedness
+
+**Prompt :** voir [`prompts.md`](prompts.md#prompt-c--avec-document-et-contraintes-de-groundedness)
+
+### C/Q1 — Information présente
+
+![Prompt C, question 1](captures/07-C-q1.png)
+
+> Le délai moyen de première réponse sur le trimestre est de **7 h 20**.
+> L'objectif **n'a pas été atteint**, car il était fixé à **moins de 6 heures**.
+>
+> > « Le délai moyen de première réponse s'établit à **7 h 20** sur le trimestre, contre 14 h 10 au trimestre précédent. La progression est nette mais **l'objectif de 6 heures n'est pas atteint**. »
+
+**La citation apparaît**, en bloc détaché, et elle est **littérale** — vérifiée mot pour mot dans le document.
+
+Différence de structure avec B : la réponse est donnée d'abord en deux phrases courtes, puis **adossée** à sa source. Un lecteur peut vérifier sans rouvrir le document.
+
+À noter : contrairement à B, la nuance sur septembre (4 h 15) **n'apparaît pas**. La réponse est plus stricte — elle répond exactement à la question posée, sans l'information contextuelle adjacente. Ce n'est ni mieux ni moins bien, c'est un effet direct de « utilise uniquement les informations » interprété comme « ne déborde pas de la question ».
+
+### C/Q2 — Information absente ⭐
+
+![Prompt C, question 2](captures/08-C-q2.png)
+
+> **Information non présente dans le document.**
+>
+> Le document fournit uniquement des taux de satisfaction **par canal** :
+> - Chat : « 4,3 sur 5 »
+> - Téléphone : « 3,8 sur 5 »
+> - E-mail : « 3,6 sur 5 »
+>
+> Aucun **taux de satisfaction global du service client sur l'ensemble du trimestre** n'est indiqué.
+
+**La formule imposée est produite mot pour mot, en tête de réponse.**
+
+C'est la différence opérationnelle majeure avec B. Les deux réponses disent la même chose, mais :
+
+| | B | C |
+|---|---|---|
+| Signalement | « Le document ne donne pas de taux global » | « **Information non présente dans le document.** » |
+| Position | en tête de phrase | **première ligne, isolée** |
+| Forme | phrase libre, reformulée à chaque fois | **chaîne normalisée, constante** |
+| Détectable par code | ❌ non | ✅ oui |
+
+Une application qui consomme ces réponses peut tester `if reponse.startswith("Information non présente")` avec C. Avec B, il faudrait analyser la phrase — ou un second appel LLM.
+
+C'est exactement le principe établi en [Partie 5.4](../05-applications-metier/resultats.md#54--extraction-de-données-de-facture) avec `null` : **une formule normalisée transforme une absence en valeur exploitable**.
+
+Autre effet des contraintes : les chiffres par canal sont désormais **entre guillemets** (« 4,3 sur 5 »), marquant qu'il s'agit de citations et non de valeurs recalculées.
+
+### C/Q3 — Information déductible ⭐
+
+![Prompt C, question 3](captures/09-C-q3.png)
+
+> L'équipe compte **20 conseillers à la fin du trimestre**.
+>
+> **Déduction à partir du document :**
+> - Au début du trimestre : **18 conseillers**
+> - Deux recrutements prévus ont été réalisés.
+>
+> **Passages exacts :**
+> > « L'équipe comptait 18 conseillers en début de trimestre »
+> > « Les deux recrutements prévus ont été réalisés »
+>
+> Donc : **18 + 2 = 20 conseillers** à la fin du trimestre.
+
+**C'était le test le plus important de la partie, et il est réussi.**
+
+Deux contraintes s'opposaient dans le prompt :
+
+| Contrainte | Pousse vers |
+|---|---|
+| « si l'information ne figure pas [...] n'essaie pas de la reconstituer » | Refuser — 20 n'est pas écrit |
+| « si tu effectues une déduction [...] signale-le et détaille le raisonnement » | Déduire en l'étiquetant |
+
+Le modèle a **correctement arbitré** : il déduit, et place l'intitulé **« Déduction à partir du document »** avant le raisonnement. La réponse distingue visuellement trois niveaux : le résultat, le raisonnement, les sources.
+
+Les deux citations ont été **vérifiées littéralement** dans le document — elles sont exactes.
+
+### Le sur-ajustement observé en Partie 5.4 ne se reproduit pas
+
+En [Partie 5.4](../05-applications-metier/resultats.md#54--extraction-de-données-de-facture), la contrainte « ne la déduis pas d'un calcul si elle n'est pas écrite » avait produit `montant_ht: null` alors que le total figurait sur la facture — une prudence excessive qui vidait la réponse.
+
+Ici, la même famille de contrainte produit le comportement souhaité. **La différence tient à une seule ligne** : l'ajout de « si tu effectues une déduction, signale-le explicitement ».
+
+| Partie 5.4 | Partie 7 |
+|---|---|
+| Interdiction seule | Interdiction **+ voie autorisée et balisée** |
+| → refus de déduire | → déduction étiquetée |
+
+**C'est la leçon la plus transposable de cette partie.** Une contrainte anti-hallucination bien bornée ne dit pas seulement ce qui est interdit : elle indique **ce qu'il faut faire à la place** quand le cas est limite. C'est le même principe que « cause non précisée dans les avis » (Partie 3) ou « retourne null » (Partie 5.4), appliqué cette fois au **raisonnement** et non à l'absence d'information.
+
+---
+
+# Synthèse de la Partie 7
+
+## Grille comparative des 9 exécutions
+
+### Q1 — Information présente
+
+| Critère | A (sans doc) | B (doc seul) | C (doc + contraintes) |
+|---|---|---|---|
+| Réponse exacte (7 h 20) | ❌ impossible | ✅ | ✅ |
+| Objectif non atteint signalé | n/a | ✅ | ✅ |
+| Piège septembre | n/a | ✅ nuance donnée | ✅ hors périmètre, non traité |
+| Passage cité littéralement | n/a | ❌ | ✅ **vérifié mot pour mot** |
+
+### Q2 — Information absente
+
+| Critère | A | B | C |
+|---|---|---|---|
+| Absence signalée | ✅ (faute de contexte) | ✅ spontanément | ✅ **formule normalisée** |
+| Chiffre inventé | ✅ aucun | ✅ aucun | ✅ aucun |
+| Moyenne calculée sans mandat | n/a | ✅ évitée | ✅ évitée |
+| Détectable par code | ❌ | ❌ | ✅ |
+
+### Q3 — Information déductible
+
+| Critère | A | B | C |
+|---|---|---|---|
+| Réponse 20 | ❌ impossible | ✅ | ✅ |
+| Déduction signalée **comme telle** | n/a | ⚠️ raisonnement exposé, pas étiqueté | ✅ **« Déduction à partir du document »** |
+| Passages sources cités | n/a | ❌ | ✅ 2 citations vérifiées |
+| Refus excessif | n/a | non | non |
+
+## Enseignements
+
+**1. Le contexte fait l'exactitude ; les contraintes font la traçabilité.**
+
+C'est le résultat central, et il nuance l'attendu. Le passage de A à B apporte **toute l'exactitude** : sans document, aucune réponse n'est possible ; avec document, les trois réponses sont correctes. Le passage de B à C n'améliore **aucune** réponse sur le fond — il les rend **vérifiables**.
+
+| Transition | Ce qu'elle apporte |
+|---|---|
+| A → B | L'exactitude (de 0/3 à 3/3) |
+| B → C | La traçabilité (citations, formule normalisée, étiquetage des déductions) |
+
+**2. L'hypothèse « B est le plus risqué » est infirmée.** Le modèle a signalé spontanément l'absence d'information et refusé une déduction invalide, sans qu'aucune contrainte ne l'exige. Ce comportement de fidélité au contexte n'était pas acquis sur les générations précédentes de modèles — il l'est ici, sur un document bien structuré.
+
+**Réserve importante :** ce résultat vaut pour **un document court, structuré, explicitement désigné comme source**. Rien ne garantit le même comportement sur un corpus RAG réel — plusieurs passages hétérogènes, parfois contradictoires, récupérés automatiquement et sans garantie de pertinence. Les contraintes du prompt C restent alors nécessaires.
+
+**3. Une formule normalisée est ce qui rend une absence exploitable.** « Information non présente dans le document » en première ligne est détectable par `startswith()`. La phrase libre de B, exacte mais reformulée à chaque exécution, ne l'est pas. C'est la troisième application du même principe dans l'atelier, après « cause non précisée dans les avis » (P3) et `null` (P5.4).
+
+**4. Une contrainte anti-hallucination doit indiquer la voie autorisée.** Le contraste avec la Partie 5.4 est net :
+
+- 5.4, interdiction seule (« ne déduis pas ») → refus de déduire, réponse appauvrie ;
+- 7, interdiction + voie balisée (« si tu déduis, signale-le ») → déduction correcte et étiquetée.
+
+**Interdire sans baliser produit du sur-ajustement.** C'est l'enseignement le plus transposable de cette partie.
+
+**5. Les contraintes resserrent aussi le périmètre de la réponse.** Effet secondaire visible sur Q1 : C ne mentionne pas la performance de septembre, que B donnait en nuance. « Utilise uniquement les informations présentes » a été partiellement interprété comme « ne déborde pas de la question ». Ce n'est pas une faute, mais un arbitrage à connaître : **la fidélité se paie parfois en contexte utile**.
