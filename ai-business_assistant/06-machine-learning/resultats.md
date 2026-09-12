@@ -401,3 +401,129 @@ La contrainte aurait gagné à être chiffrée : *« la classe positive représe
 **3. Exiger un cas de défaillance par élément est très productif.** Cinq contre-exemples chiffrés et cohérents, là où une demande d'« explication » aurait produit cinq définitions.
 
 **4. Une contrainte qualitative sur un ordre de grandeur doit être chiffrée.** « Cas déséquilibré » a donné 10 % ; « au maximum 2 % » aurait donné une démonstration plus nette.
+
+---
+
+## 6.5 — Métriques de régression
+
+**Prompt :** voir [`prompts.md`](prompts.md#65--métriques-de-régression)
+
+![Résultat des métriques de régression](captures/05-metriques-regression.png)
+
+**Jeu fil rouge produit :**
+
+| Heure | Réel (kWh) | Prédit (kWh) | Erreur |
+|---|---:|---:|---:|
+| 1 | 10 | 12 | −2 |
+| 2 | 15 | 13 | +2 |
+| 3 | 20 | 18 | +2 |
+| 4 | 25 | 28 | −3 |
+| 5 | **100** | **70** | **+30** |
+
+### Vérification des calculs : tous exacts
+
+| Métrique | Calcul vérifié | Annoncé | ✓ |
+|---|---|---|---|
+| MAE | 39/5 = 7,80 | 7,8 kWh | ✅ |
+| MSE | 921/5 = 184,20 | 184,2 kWh² | ✅ |
+| RMSE | √184,2 = 13,5720 | ≈ 13,57 kWh | ✅ |
+| Ratio 30²/2² | 900/4 = 225 | 225 | ✅ |
+| Cohérence réel − prédit | 5 lignes sur 5 | — | ✅ |
+
+**Contraste avec la question 6.4**, où une valeur était fausse. Ici les cinq vérifications passent, y compris la cohérence interne du tableau (chaque erreur correspond bien à `réel − prédit`).
+
+Cette différence est instructive : le prompt 6.5 exigeait « **calcule effectivement** les trois valeurs [...] et **montre le détail du calcul** ». Le prompt 6.4 demandait « un exemple concret, avec les nombres de vrais/faux positifs et négatifs » — sans exiger le détail. **Demander le détail du calcul semble réduire le risque d'erreur**, probablement parce qu'il force une décomposition explicite plutôt qu'une restitution mémorisée.
+
+C'est une observation à confirmer sur plus d'exécutions, mais elle est cohérente avec le principe général de la [Partie 3](../03-raisonnement/resultats.md) : décomposer rend vérifiable, et ici, rend aussi plus exact.
+
+### Les unités sont traitées correctement
+
+C'est le point techniquement le plus souvent manqué, et il est bien traité :
+
+> « Comme les erreurs sont élevées au carré, la MSE est en **kWh²**. [...] Une MSE de 184,2 ne signifie donc **pas** que le modèle se trompe de 184,2 kWh. »
+
+La mise en garde est explicite et correcte. Le tableau comparatif reprend l'unité de chacune des trois métriques.
+
+Le modèle formule aussi une nuance rarement énoncée sur RMSE :
+
+> « Il faut cependant éviter de l'interpréter exactement comme une "erreur moyenne", car la RMSE donne davantage de poids aux grandes erreurs. »
+
+C'est exact : RMSE n'est pas une moyenne d'erreurs, c'est une moyenne quadratique — et la confusion est fréquente.
+
+### L'écart MAE ↔ RMSE est correctement diagnostiqué
+
+La contrainte demandait d'expliquer ce que révèle cet écart. La réponse produit la bonne règle, avec la bonne réserve :
+
+> **MAE proche de RMSE** → erreurs relativement homogènes
+> **RMSE nettement supérieure à MAE** → présence probable de grosses erreurs
+>
+> « Attention : ce n'est pas une règle absolue permettant de déduire toute la distribution des erreurs, mais c'est un **signal diagnostique utile**. »
+
+Sur l'exemple, l'écart est frappant : MAE 7,8 contre RMSE 13,57, soit un rapport de 1,74 pour une seule erreur aberrante sur cinq. La construction du jeu fil rouge — imposée par la contrainte « au moins une erreur nettement plus grande » — rend la démonstration visible.
+
+Le modèle quantifie aussi l'effet du carré : une erreur de 30 pèse **225 fois** plus qu'une erreur de 2. C'est le chiffre qui explique tout le reste.
+
+### Le rattachement au dataset est nuancé et correct
+
+C'est la contrainte la plus exigeante du prompt, et la réponse ne se contente pas d'une règle :
+
+> « Je choisirais la **RMSE comme métrique principale**, mais je suivrais également la **MAE**. »
+
+L'argumentation repose sur les chiffres réels du dataset :
+
+| Argument | Ancrage |
+|---|---|
+| Pics de consommation attendus | moyenne 27,3 ≫ médiane 13,1, max 898,5 |
+| RMSE pénalise les erreurs sur les pics | « une erreur de 400 kWh sur un pic ne doit pas être équivalente à 10 kWh en période normale » |
+| Mais RMSE seule serait dominée par les extrêmes | « quelques valeurs extrêmes pourraient dominer la RMSE » |
+| Donc MAE en complément | « vérifier la performance courante du modèle » |
+
+Et il ajoute une recommandation opérationnelle non demandée : « j'analyserais séparément les erreurs sur les **heures de pointe** ». C'est le bon réflexe sur une distribution asymétrique — segmenter l'évaluation plutôt que chercher une métrique unique.
+
+**Le modèle répond bien qu'il s'agit d'un arbitrage, pas d'une règle technique.** Il ne tranche pas abstraitement entre MAE et RMSE : il propose un dispositif de mesure adapté au profil de la cible.
+
+### Une occasion manquée
+
+Le contexte fourni signalait explicitement la distribution asymétrique. Comme en 6.2 et 6.3, **la transformation logarithmique de la cible n'est pas évoquée**.
+
+C'est pourtant ici qu'elle aurait le plus de sens : si l'on entraîne sur `log(consommation)`, RMSE mesure une erreur relative plutôt qu'absolue, ce qui change complètement l'arbitrage MAE/RMSE. Le modèle raisonne sur *comment mesurer* l'erreur sur une cible asymétrique, sans jamais envisager de *transformer* cette cible.
+
+**Troisième occurrence du même angle mort dans la partie 6.** L'asymétrie est systématiquement reconnue et utilisée comme argument, jamais traitée comme une décision de modélisation.
+
+### Ce que cette tâche établit
+
+**1. Exiger le détail du calcul améliore l'exactitude.** Cinq vérifications exactes en 6.5 contre une erreur en 6.4, sur des tâches de difficulté comparable. La différence de formulation entre les deux prompts est la piste la plus plausible.
+
+**2. Les unités sont un bon révélateur de compréhension.** Distinguer kWh de kWh², et prévenir la mauvaise lecture de la MSE, suppose de comprendre l'opération, pas de restituer une formule.
+
+**3. Un bon conseil métrique est un dispositif, pas un choix unique.** RMSE principale + MAE complémentaire + analyse séparée des pics : c'est plus utile qu'une réponse tranchée, et c'est ce que la contrainte « laquelle choisirais-tu **et pourquoi** » a permis d'obtenir.
+
+---
+
+# Synthèse de la Partie 6
+
+## Grille récapitulative
+
+| Tâche | Ancrage | Couverture | Exactitude | Spécificité | Cohérence |
+|---|---|---|---|---|---|
+| 6.1 Nettoyage | ✅ chaque reco cite une colonne | ✅ **8/8** indices | ✅ | ✅ | ✅ |
+| 6.2 Visualisations | ✅ chaque viz cite un chiffre | ⚠️ aucune « avant nettoyage » | ✅ | ✅ | ✅ |
+| 6.3 Modèles | ✅ limites chiffrées | ✅ 5 modèles + baseline | ✅ | ✅ | ✅ split temporel |
+| 6.4 Métriques classif. | n/a | ✅ 5/5 | ❌ **1 erreur** (F1 = 18 %, pas 16,4 %) | ✅ | ✅ |
+| 6.5 Métriques régression | ✅ dataset cité | ✅ 3/3 | ✅ tout vérifié | ✅ | ✅ |
+
+## Enseignements
+
+**1. Le risque annoncé — le conseil plausible mais inadapté — ne s'est pas matérialisé.** Les deux pièges méthodologiques majeurs ont été évités : la sentinelle `-999` n'a pas été traitée comme un outlier statistique (6.1), et le split aléatoire sur série temporelle a été explicitement rejeté (6.3). Sur ce dataset, un profil statistique bien construit a suffi.
+
+**2. Un profil statistique remplace le dataset.** Le modèle n'a jamais vu les 11 070 lignes. Un `describe()`, un `isna()`, un `value_counts()` et 8 lignes d'extrait ont produit des conseils spécifiques et exploitables. **C'est le cas d'usage réaliste du LLM en data science**, et il fonctionne.
+
+**3. La contrainte d'ancrage est ce qui sépare le conseil du catalogue.** Exiger que chaque recommandation cite une colonne et une valeur a produit, dans les trois premières tâches, des réponses impossibles à confondre avec un cours générique. Contraste net avec la Partie 3, où le prompt vague donnait une vingtaine de recommandations hors-sol.
+
+**4. La fluidité masque les erreurs de calcul.** L'erreur du F1 (6.4) est passée inaperçue à la lecture : la réponse était structurée, les formules justes, les contre-exemples pertinents. **Toute valeur numérique produite par un LLM doit être recalculée**, même entourée de calculs exacts.
+
+**5. Exiger le détail du calcul semble réduire le risque d'erreur.** Seule différence de formulation entre 6.4 (une erreur) et 6.5 (aucune) : « montre le détail du calcul ». À confirmer, mais cohérent avec ce qu'a établi la Partie 3 sur la décomposition.
+
+**6. Signaler une caractéristique n'est pas la traiter.** L'asymétrie de la cible a été mentionnée dans les trois tâches concernées (6.2, 6.3, 6.5), toujours comme argument, jamais comme décision : **aucune transformation logarithmique n'a été proposée**. Pour obtenir une action, il faut la demander — « quelles transformations de la cible envisages-tu, et pourquoi ? ».
+
+**7. Une contrainte qualitative laisse le degré au modèle.** « Cas déséquilibré » a donné 10 % de positifs là où 2 % aurait été plus démonstratif ; « indique avant ou après nettoyage » a produit sept « après ». Quand l'ordre de grandeur ou la répartition comptent, il faut les chiffrer.
