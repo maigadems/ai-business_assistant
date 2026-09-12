@@ -352,3 +352,127 @@ Ces deux exécutions exposent un arbitrage qu'aucune formulation ne supprime :
 **3. Une contrainte anti-invention mal bornée coûte de la complétude.** Le modèle n'a pas distingué *fabriquer* de *déduire*. Il faut donc énumérer les déductions autorisées, ce qui suppose de connaître à l'avance les cas limites du corpus.
 
 **4. En extraction, le silence vaut mieux que l'approximation.** Deux `null` en trop sont un moindre mal comparés à deux montants mal qualifiés.
+
+---
+
+## 5.5 — Rédaction d'un email client
+
+**Prompt :** voir [`prompts.md`](prompts.md#55--rédaction-dun-email-client)
+
+![Résultat de l'email](captures/05-email.png)
+
+**Réponse obtenue (intégrale) :**
+
+> Bonjour,
+>
+> Nous vous présentons nos sincères excuses pour le retard de livraison de votre commande passée le 3 octobre. Le délai annoncé était de 48 heures, alors que vous n'avez reçu votre colis que le 12 octobre, soit neuf jours plus tard.
+>
+> Nous regrettons également l'absence de réponse à vos deux relances par email. Cette situation ne correspond pas au niveau de service que nous souhaitons vous apporter.
+>
+> La cause de ce retard est actuellement en cours d'analyse afin de comprendre ce qui s'est passé et d'éviter qu'une telle situation ne se reproduise.
+>
+> Nous vous proposons de transmettre votre dossier à notre service client afin qu'une solution adaptée puisse vous être proposée, notamment concernant un éventuel geste commercial, sous réserve de validation.
+>
+> Merci pour votre patience et votre compréhension.
+>
+> Cordialement,
+> Le service client
+
+**Observations :**
+
+| Critère | Constat |
+|---|---|
+| Longueur | ✅ 140 mots |
+| **Objet d'email** | ❌ **absent** — le format demandait « un objet, puis le corps » |
+| Objectif 1 — reconnaître le retard | ✅ dates et durée exactes |
+| Objectif 2 — excuses | ✅ double : retard + absence de réponse |
+| Objectif 3 — expliquer | ✅ voir ci-dessous |
+| Objectif 4 — solution | ⚠️ faible, voir ci-dessous |
+| **Cause inventée** | ✅ **aucune** |
+| Geste commercial engagé | ✅ proposé sous réserve, non chiffré |
+| Faute rejetée sur un tiers | ✅ aucune |
+| Retard minimisé | ✅ non |
+
+### Le test central est réussi : aucune cause inventée
+
+C'est l'enjeu principal de cette tâche, et le résultat est net :
+
+> « La cause de ce retard est **actuellement en cours d'analyse** afin de comprendre ce qui s'est passé et d'éviter qu'une telle situation ne se reproduise. »
+
+Aucun « pic d'activité saisonnier », aucun « incident chez notre transporteur », aucune « forte demande » — ces formules que le modèle produit spontanément quand rien ne l'en empêche, et qui sonnent si juste qu'un relecteur ne les remarque pas.
+
+**La formule fournie dans le prompt a été reprise presque à l'identique.** C'est la quatrième confirmation du principe dégagé en Partie 3 :
+
+| Partie | Formule imposée | Résultat |
+|---|---|---|
+| 3 | « cause non précisée dans les avis » | ✅ produite 2 fois |
+| 5.4 | « retourne null » | ✅ aucun numéro inventé |
+| 5.5 | « cause en cours d'analyse » | ✅ aucune cause inventée |
+
+**Donner une formule à produire bat systématiquement une interdiction à respecter.** L'interdiction laisse un vide que le modèle comble ; la formule occupe ce vide.
+
+### La tension de l'objectif 3 est résolue élégamment
+
+Le prompt demandait d'« expliquer la situation » tout en interdisant d'en inventer la cause — une contradiction apparente.
+
+Le modèle l'a résolue en **expliquant ce qui est su** (chronologie précise : commande le 3, délai annoncé 48 h, réception le 12, neuf jours d'écart, deux relances sans réponse) et en **qualifiant explicitement ce qui ne l'est pas**. L'email est informatif sans être spéculatif.
+
+Il ajoute même une reconnaissance que le prompt ne demandait pas explicitement :
+
+> « Cette situation ne correspond pas au niveau de service que nous souhaitons vous apporter. »
+
+C'est une assomption de responsabilité, sans rejet sur un tiers — conforme à la contrainte « ne rejette la faute sur personne ».
+
+### Deux faiblesses
+
+**1. L'objet d'email est absent.** Le format demandait « un objet d'email, puis le corps du message ». Le modèle a produit le corps seul, en commençant par « Bonjour ».
+
+C'est la seule violation franche de contrainte de cette partie. Elle est d'autant plus notable que la limite de 150 mots était annoncée comme « objet inclus » — le modèle a donc lu cette mention sans en tirer qu'un objet était attendu.
+
+**Hypothèse :** les contraintes de fond (quatre objectifs, cinq interdictions) ont saturé l'attention au détriment d'une consigne de format placée en dernière ligne. Un format aussi simple gagnerait à être donné en tête, ou sous forme de gabarit :
+
+```text
+Format :
+Objet : <objet de l'email>
+
+<corps du message>
+```
+
+**2. La solution proposée est creuse.** L'objectif 4 demandait une « solution concrète » :
+
+> « Nous vous proposons de transmettre votre dossier à notre service client afin qu'une solution adaptée puisse vous être proposée »
+
+Transmettre le dossier au service client **est** le service client — c'est une boucle. Aucune action concrète n'est proposée au client : ni suivi nommé, ni délai de rappel, ni geste identifié.
+
+La contrainte « n'engage pas l'entreprise sans réserve » a été appliquée si strictement qu'il ne reste rien de concret. Une formulation plus utile aurait pu être : *« Un conseiller vous recontactera sous 48 heures pour examiner un geste commercial. »* — un engagement de processus, pas de montant.
+
+**C'est le même sur-ajustement qu'en 5.4** : une contrainte de prudence formulée trop largement vide la réponse de sa substance. La prudence anti-invention a un coût, ici sur l'utilité.
+
+---
+
+# Synthèse de la Partie 5
+
+## Grille comparative des cinq tâches
+
+| Tâche | Contrainte de forme | Fidélité | Complétude | Invention | Exploitabilité |
+|---|---|---|---|---|---|
+| 5.1 Résumé | ✅ 234/250 mots | ✅ | ⚠️ difficultés omises | ✅ aucune | ✅ |
+| 5.2 Traduction | ✅ structure identique | ✅ | ✅ | ⚠️ « mobile » ajouté | ✅ |
+| 5.3 Ticket | ✅ JSON, 2 champs | ✅ | ⚠️ justification faible | ✅ aucune | ✅ |
+| 5.4 Facture A | ✅ JSON, 6 champs | ✅ | ✅ 6/6 | ✅ aucune | ✅ |
+| 5.4 Facture B | ✅ JSON, 6 champs | ✅ | ⚠️ 2 null en trop | ✅ aucune | ✅ |
+| 5.5 Email | ❌ objet manquant | ✅ | ⚠️ solution creuse | ✅ aucune | ⚠️ |
+
+## Enseignements
+
+**1. Aucune hallucination sur les cinq tâches.** C'est le résultat le plus solide de la partie. Sur des tâches où l'invention était facile — expliquer un retard, numéroter une facture, compléter une ellipse — le modèle n'a rien fabriqué. Un seul ajout non autorisé, « mobile », et il était exact.
+
+**2. La formule à produire est la technique anti-hallucination la plus fiable.** Trois occurrences, trois succès : « cause non précisée » (P3), « retourne null » (5.4), « cause en cours d'analyse » (5.5). Une interdiction laisse un vide ; une formule l'occupe.
+
+**3. Les contraintes de prudence se sur-ajustent.** Deux fois sur cinq, une contrainte anti-invention correctement respectée a dégradé l'utilité : `null` sur des montants déductibles (5.4), solution creuse dans l'email (5.5). **Il faut borner ces contraintes en énumérant ce qui reste autorisé**, ce qui suppose de connaître les cas limites à l'avance.
+
+**4. Contraindre la forme ne garantit pas le fond.** Récurrent sur trois tâches : la `justification` du ticket est bien citée mais rate l'argument décisif (5.3) ; le résumé respecte ses trois intertitres mais perd les difficultés (5.1) ; l'email respecte 140 mots mais n'a pas d'objet (5.5). Le même constat qu'en Partie 4 avec le champ `confiance`.
+
+**5. Une consigne de format en fin de prompt peut être manquée.** L'objet d'email était la dernière ligne, après cinq contraintes denses. Placer les consignes de format en tête, ou sous forme de gabarit à remplir, réduit ce risque.
+
+**6. Les règles de désambiguïsation sont le meilleur investissement.** Les quatre pièges de la facture A ont tous été déjoués par une règle explicite correspondante. C'est la démonstration la plus nette de la partie : **anticiper les ambiguïtés du corpus vaut mieux que constater les erreurs après coup.**
